@@ -1,0 +1,2404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meeting Assistant — AI Powered</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.ably.com/lib/ably.min-2.js"></script>
+<script src="https://accounts.google.com/gsi/client"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f0f4ff;--bg2:#ffffff;--bg3:#f5f0ff;--bg4:#ede9fe;
+  --border:#ddd6fe;--border2:#c4b5fd;
+  --text:#1e1b4b;--text2:#6d28d9;--text3:#a78bfa;
+  --accent:#7c3aed;--accent2:#6d28d9;--accent3:#8b5cf6;
+  --green:#059669;--red:#dc2626;--amber:#d97706;--purple:#9333ea;--teal:#0891b2;
+  --radius:16px;--rsm:10px;--rxs:6px;
+}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+
+/* ANIMATED BG */
+.bg-grid{position:fixed;inset:0;background-image:linear-gradient(rgba(124,58,237,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(124,58,237,.06) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+.bg-glow{position:fixed;width:700px;height:700px;border-radius:50%;background:radial-gradient(circle,rgba(124,58,237,.08) 0%,rgba(167,139,250,.04) 50%,transparent 70%);top:-200px;right:-100px;pointer-events:none;z-index:0;animation:glowMove 8s ease-in-out infinite alternate} .bg-glow2{position:fixed;width:500px;height:500px;border-radius:50%;background:radial-gradient(circle,rgba(14,165,233,.07) 0%,transparent 70%);bottom:-100px;left:-100px;pointer-events:none;z-index:0;animation:glowMove 10s ease-in-out infinite alternate-reverse}
+@keyframes glowMove{0%{transform:translate(0,0)}100%{transform:translate(-100px,100px)}}
+
+/* LOGIN SCREEN */
+#login-screen{position:fixed;inset:0;background:linear-gradient(135deg,#f0f4ff 0%,#faf5ff 50%,#f0fdff 100%);display:flex;align-items:center;justify-content:center;z-index:1000;flex-direction:column;gap:0}
+.login-card{background:var(--bg2);border:1px solid var(--border);border-radius:24px;padding:3rem 2.5rem;width:420px;max-width:95vw;text-align:center;position:relative;z-index:1;animation:fadeUp .6s ease both;box-shadow:0 20px 60px rgba(124,58,237,.15),0 0 0 1px rgba(124,58,237,.08)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.login-logo{width:72px;height:72px;background:linear-gradient(135deg,#a855f7,#e879f9,#22d3ee);border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 1.5rem;box-shadow:0 0 40px rgba(168,85,247,.5)}
+.login-title{font-size:1.6rem;font-weight:700;margin-bottom:.5rem;letter-spacing:-.02em}
+.login-sub{font-size:.875rem;color:var(--text2);margin-bottom:2rem;line-height:1.6}
+.google-btn{width:100%;padding:12px 20px;background:white;color:#1f2937;border:none;border-radius:var(--rsm);font-size:.9rem;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:all .2s;font-family:'Outfit',sans-serif;box-shadow:0 4px 20px rgba(0,0,0,.3)}
+.google-btn:hover{background:#f3f4f6;transform:translateY(-1px);box-shadow:0 4px 20px rgba(0,0,0,.3)}
+.google-btn img{width:20px;height:20px}
+.login-features{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:1.5rem}
+.feat-item{background:#faf5ff;border:1px solid var(--border);border-radius:var(--rsm);padding:10px 12px;font-size:.75rem;color:var(--text2);display:flex;align-items:center;gap:7px;text-align:left}
+.feat-icon{font-size:16px;flex-shrink:0}
+
+/* GEMINI KEY BAR */
+.gemini-bar{background:#faf5ff;border-bottom:1px solid var(--border);padding:8px 1.5rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap;position:relative;z-index:10}
+.g-label{font-size:.72rem;color:var(--text2);white-space:nowrap}
+.g-input{flex:1;min-width:140px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--rxs);padding:5px 10px;font-size:.72rem;font-family:'JetBrains Mono',monospace;color:var(--text);outline:none}
+.g-input:focus{border-color:var(--accent)}
+.g-input::placeholder{color:var(--text3)}
+.g-save{background:var(--accent);color:#fff;border:none;border-radius:var(--rxs);padding:5px 12px;font-size:.72rem;font-weight:500;cursor:pointer;font-family:'Outfit',sans-serif;white-space:nowrap}
+.g-save:hover{background:var(--accent2)}
+.g-badge{font-size:.68rem;padding:2px 8px;border-radius:20px;font-weight:500;white-space:nowrap;display:none}
+.g-badge.ok{background:rgba(16,185,129,.12);color:var(--green);border:1px solid rgba(16,185,129,.3)}
+.g-badge.bad{background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.3)}
+
+/* MAIN APP */
+#app{display:none;flex-direction:column;min-height:100vh;position:relative;z-index:1}
+#app.show{display:flex}
+
+/* TOPBAR */
+.topbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 1.5rem;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;backdrop-filter:blur(12px)}
+.topbar-left{display:flex;align-items:center;gap:12px}
+.app-logo{width:34px;height:34px;background:linear-gradient(135deg,#a855f7,#e879f9);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 0 16px rgba(168,85,247,.5)}
+.app-name{font-size:1rem;font-weight:700;letter-spacing:-.01em}
+.topbar-right{display:flex;align-items:center;gap:10px}
+.user-chip{display:flex;align-items:center;gap:8px;background:#faf5ff;border:1px solid var(--border);border-radius:30px;padding:4px 12px 4px 4px;cursor:pointer}
+.user-avatar{width:28px;height:28px;border-radius:50%;border:1px solid var(--border2)}
+.user-name{font-size:.78rem;font-weight:500}
+.sign-out-btn{font-size:.72rem;color:var(--text2);background:none;border:none;cursor:pointer;font-family:'Outfit',sans-serif;padding:4px 8px;border-radius:var(--rxs);transition:all .2s}
+.sign-out-btn:hover{background:var(--bg3);color:var(--red)}
+
+/* NAV TABS */
+.nav-tabs{display:flex;gap:2px;background:#ede9fe;border-radius:var(--rsm);padding:3px}
+.nav-tab{padding:5px 14px;border-radius:var(--rxs);font-size:.78rem;font-weight:500;cursor:pointer;border:none;background:none;color:var(--text2);transition:all .2s;font-family:'Outfit',sans-serif}
+.nav-tab.active{background:linear-gradient(135deg,#a855f7,#9333ea);color:#fff;box-shadow:0 2px 10px rgba(168,85,247,.4)}
+.nav-tab:hover:not(.active){background:var(--bg4);color:var(--text)}
+
+/* PAGES */
+.page{display:none;flex:1;overflow-y:auto;padding:1.5rem}
+.page.active{display:block}
+
+/* DASHBOARD */
+.dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:1.5rem}
+.stat-card{background:#fff;border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:var(--radius);padding:1.25rem;display:flex;flex-direction:column;gap:6px;transition:all .2s;box-shadow:0 2px 12px rgba(124,58,237,.08)}
+.stat-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 8px 24px rgba(168,85,247,.15)}
+.stat-label{font-size:.7rem;color:var(--text2);text-transform:uppercase;letter-spacing:.08em}
+.stat-val{font-size:1.8rem;font-weight:700;letter-spacing:-.02em}
+.stat-sub{font-size:.72rem;color:var(--text3)}
+.stat-icon{font-size:1.5rem;margin-bottom:4px}
+
+.section-title{font-size:.75rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px}
+.upcoming-list{display:flex;flex-direction:column;gap:8px}
+.meeting-card{background:#fff;border:1px solid var(--border);border-radius:var(--rsm);padding:14px 16px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all .2s;box-shadow:0 2px 12px rgba(124,58,237,.06)}
+.meeting-card:hover{border-color:#a855f7;background:var(--bg3);box-shadow:0 4px 20px rgba(168,85,247,.15);transform:translateX(4px)}
+.meeting-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.meeting-info{flex:1}
+.meeting-title-text{font-size:.9rem;font-weight:600;margin-bottom:3px}
+.meeting-meta{font-size:.75rem;color:var(--text2);display:flex;gap:10px;flex-wrap:wrap}
+.meeting-badge{font-size:.65rem;padding:2px 8px;border-radius:20px;font-weight:600}
+.badge-online{background:rgba(59,130,246,.15);color:var(--accent3);border:1px solid rgba(59,130,246,.3)}
+.badge-offline{background:rgba(245,158,11,.15);color:var(--amber);border:1px solid rgba(245,158,11,.3)}
+.badge-done{background:rgba(16,185,129,.15);color:var(--green);border:1px solid rgba(16,185,129,.3)}
+.meeting-actions-row{display:flex;gap:6px;flex-shrink:0}
+
+/* SCHEDULE */
+.schedule-form{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;max-width:700px;box-shadow:0 4px 24px rgba(124,58,237,.08)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-field{display:flex;flex-direction:column;gap:6px}
+.form-field.full{grid-column:1/-1}
+.form-label{font-size:.72rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.07em}
+.form-input{background:#faf5ff;border:1px solid var(--border);border-radius:var(--rsm);padding:9px 13px;font-size:.875rem;color:var(--text);font-family:'Outfit',sans-serif;outline:none;transition:border .2s;width:100%}
+.form-input:focus{border-color:var(--accent)}
+.form-input::placeholder{color:var(--text3)}
+.form-input[type="datetime-local"]{color-scheme:dark}
+.participants-wrap{position:relative}
+.participant-tags{display:flex;flex-wrap:wrap;gap:6px;padding:8px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rsm);min-height:42px;cursor:text;transition:border .2s}
+.participant-tags:focus-within{border-color:var(--accent)}
+.ptag{display:flex;align-items:center;gap:5px;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);color:var(--accent3);border-radius:20px;padding:2px 10px;font-size:.75rem}
+.ptag button{background:none;border:none;color:var(--accent3);cursor:pointer;font-size:14px;line-height:1;padding:0}
+.ptag-input{border:none;background:transparent;color:var(--text);font-family:'Outfit',sans-serif;font-size:.875rem;outline:none;min-width:140px;flex:1;padding:2px 4px}
+.ptag-input::placeholder{color:var(--text3)}
+.mode-toggle{display:flex;gap:8px}
+.mode-btn{flex:1;padding:9px;border-radius:var(--rsm);border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-size:.825rem;font-weight:500;cursor:pointer;font-family:'Outfit',sans-serif;transition:all .2s;text-align:center}
+.mode-btn.active{border-color:#a855f7;background:rgba(168,85,247,.15);color:#d8b4fe;box-shadow:0 0 12px rgba(168,85,247,.2)}
+.reminder-row{display:flex;gap:8px;flex-wrap:wrap}
+.reminder-chip{padding:6px 12px;border-radius:20px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-size:.75rem;cursor:pointer;transition:all .2s}
+.reminder-chip.active{border-color:#a855f7;background:rgba(168,85,247,.15);color:#d8b4fe}
+
+/* MEETING ROOM */
+.room-header{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;box-shadow:0 4px 24px rgba(124,58,237,.08)}
+.room-title{font-size:1.1rem;font-weight:700;letter-spacing:-.01em}
+.room-meta{font-size:.78rem;color:var(--text2);display:flex;gap:12px;margin-top:4px;flex-wrap:wrap}
+.room-controls{display:flex;gap:8px;flex-wrap:wrap}
+.rec-dot{width:9px;height:9px;border-radius:50%;background:var(--red);animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+.room-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;height:calc(100vh - 280px);min-height:400px}
+@media(max-width:700px){.room-grid{grid-template-columns:1fr;height:auto}.form-grid{grid-template-columns:1fr}}
+
+.room-panel{background:#fff;border:1px solid var(--border);border-radius:var(--radius);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 4px 24px rgba(124,58,237,.08)}
+.room-panel-head{padding:10px 16px;border-bottom:1px solid var(--border);background:#faf5ff;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.room-panel-title{font-size:.65rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);font-family:'JetBrains Mono',monospace}
+.room-panel-body{flex:1;overflow-y:auto;padding:12px 14px;background:#fff}
+
+/* PUSH TO TALK */
+.ptt-wrap{padding:12px 16px;border-bottom:1px solid var(--border);background:#faf5ff;flex-shrink:0;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ptt-btn{padding:8px 18px;border-radius:30px;border:2px solid var(--border2);background:var(--bg4);color:var(--text2);font-size:.8rem;font-weight:600;cursor:pointer;font-family:'Outfit',sans-serif;transition:all .2s;display:flex;align-items:center;gap:7px;user-select:none}
+.ptt-btn.speaking{border-color:var(--green);background:rgba(34,211,160,.15);color:var(--green);box-shadow:0 0 20px rgba(34,211,160,.4);animation:speakPulse .6s infinite alternate}
+@keyframes speakPulse{from{box-shadow:0 0 0 0 rgba(16,185,129,.3)}to{box-shadow:0 0 0 8px rgba(16,185,129,0)}}
+.ptt-hint{font-size:.7rem;color:var(--text3)}
+.online-mode-indicator{font-size:.72rem;color:var(--accent3);background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);padding:4px 10px;border-radius:20px}
+
+.seg{margin-bottom:8px;padding:9px 12px;background:#faf5ff;border-radius:var(--rsm);border-left:3px solid var(--border2);animation:segIn .2s ease}
+@keyframes segIn{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
+.seg.c0{border-left-color:#3b82f6}.seg.c1{border-left-color:#10b981}.seg.c2{border-left-color:#8b5cf6}.seg.c3{border-left-color:#f59e0b}.seg.c4{border-left-color:#ef4444}.seg.c5{border-left-color:#14b8a6}
+.seg-head{display:flex;align-items:center;gap:7px;margin-bottom:4px}
+.seg-spk{font-size:.68rem;font-weight:600;padding:1px 8px;border-radius:20px}
+.seg-time{font-size:.62rem;color:var(--text3);font-family:'JetBrains Mono',monospace}
+.seg-txt{font-size:.85rem;line-height:1.65;color:var(--text)}
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text3);font-size:.82rem;gap:6px;text-align:center;padding:1rem}
+.empty-state .ei{font-size:2rem;margin-bottom:6px}
+
+/* MOM */
+.mom-sec{margin-bottom:1.1rem}
+.mom-sec-title{font-size:.6rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--accent3);font-family:'JetBrains Mono',monospace;margin-bottom:7px;padding-bottom:4px;border-bottom:1px solid var(--border)}
+.mom-summary{font-size:.85rem;line-height:1.7;color:var(--text);background:var(--bg4);border-left:3px solid var(--accent);padding:9px 12px;border-radius:0 var(--rxs) var(--rxs) 0}
+.mom-list{list-style:none}
+.mom-list li{font-size:.82rem;color:var(--text);line-height:1.6;padding:4px 0 4px 14px;position:relative;border-bottom:1px solid rgba(255,255,255,.03)}
+.mom-list li:last-child{border-bottom:none}
+.mom-list li::before{content:"›";position:absolute;left:2px;color:var(--accent)}
+.action-row{display:flex;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.03)}
+.action-row:last-child{border-bottom:none}
+.a-dot{width:6px;height:6px;border-radius:50%;background:var(--purple);flex-shrink:0;margin-top:7px}
+.a-text{font-size:.82rem;color:var(--text);line-height:1.55;flex:1}
+.abadge{font-size:.63rem;padding:1px 7px;border-radius:20px;font-weight:500;display:inline-block;margin-top:2px;margin-right:3px}
+.abp{background:rgba(139,92,246,.12);color:var(--purple);border:1px solid rgba(139,92,246,.3)}
+.aba{background:rgba(245,158,11,.12);color:var(--amber);border:1px solid rgba(245,158,11,.3)}
+.meta-grid{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:1rem;padding-bottom:.8rem;border-bottom:1px solid var(--border)}
+.meta-item label{font-size:.58rem;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:2px}
+.meta-item span{font-size:.82rem;font-weight:500}
+.generating{display:flex;align-items:center;gap:10px;color:var(--text2);font-size:.82rem;padding:1.5rem;justify-content:center}
+.dots{display:flex;gap:4px}
+.dots span{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:bounce 1.2s infinite}
+.dots span:nth-child(2){animation-delay:.2s}.dots span:nth-child(3){animation-delay:.4s}
+@keyframes bounce{0%,80%,100%{transform:scale(.6);opacity:.4}40%{transform:scale(1);opacity:1}}
+
+/* BUTTONS */
+.btn{font-family:'Outfit',sans-serif;font-size:.8rem;font-weight:500;padding:8px 16px;border-radius:var(--rsm);border:1px solid var(--border);background:#faf5ff;color:var(--text);cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn:hover:not(:disabled){background:#ede9fe;transform:translateY(-1px)}
+.btn:disabled{opacity:.35;cursor:not-allowed;transform:none}
+.btn-primary{background:linear-gradient(135deg,#a855f7,#9333ea);border-color:#a855f7;color:#fff;box-shadow:0 4px 15px rgba(168,85,247,.4)}
+.btn-primary:hover:not(:disabled){background:linear-gradient(135deg,#9333ea,#7c3aed);box-shadow:0 6px 20px rgba(168,85,247,.5);transform:translateY(-2px)}
+.btn-green{background:rgba(16,185,129,.15);border-color:rgba(16,185,129,.35);color:var(--green)}
+.btn-green:hover:not(:disabled){background:rgba(16,185,129,.25)}
+.btn-red{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.3);color:var(--red)}
+.btn-red:hover:not(:disabled){background:rgba(239,68,68,.2)}
+.btn-purple{background:rgba(139,92,246,.15);border-color:rgba(139,92,246,.35);color:var(--purple)}
+.btn-purple:hover:not(:disabled){background:rgba(139,92,246,.25)}
+.btn-sm{padding:5px 11px;font-size:.72rem}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:500;align-items:center;justify-content:center;padding:1rem}
+.modal-overlay.open{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);padding:1.5rem;width:100%;max-width:500px;animation:fadeUp .2s ease}
+.modal h3{font-size:1rem;font-weight:700;margin-bottom:1rem}
+.modal label{font-size:.72rem;color:var(--text2);display:block;margin:10px 0 4px;font-weight:500}
+.modal input,.modal textarea,.modal select{width:100%;background:#faf5ff;border:1px solid var(--border);border-radius:var(--rsm);padding:8px 12px;font-size:.85rem;color:var(--text);font-family:'Outfit',sans-serif;outline:none}
+.modal input:focus,.modal textarea:focus,.modal select:focus{border-color:var(--accent)}
+.modal textarea{min-height:70px;resize:vertical}
+.modal-btns{display:flex;gap:8px;margin-top:1.25rem;justify-content:flex-end}
+
+/* WAVEFORM */
+.wave-wrap{padding:8px 14px;border-bottom:1px solid var(--border);background:#faf5ff;display:none;flex-shrink:0}
+.wave-wrap.show{display:block}
+canvas.wavecanvas{width:100%;height:36px;border-radius:var(--rxs);background:#ede9fe}
+
+/* STATUS */
+.status-strip{padding:8px 14px;border-bottom:1px solid var(--border);font-size:.75rem;display:flex;align-items:center;gap:8px;flex-shrink:0;color:var(--text2);background:#faf5ff}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--text3);flex-shrink:0}
+.status-dot.rec{background:var(--red);animation:blink 1s infinite}
+.status-dot.proc{background:var(--accent)}
+.status-dot.done{background:var(--green)}
+
+/* PROGRESS */
+.progress-wrap{height:2px;background:var(--border);border-radius:2px;overflow:hidden;display:none;flex-shrink:0}
+.progress-wrap.show{display:block}
+.progress-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .4s;width:0%}
+
+/* TIMER */
+.timer-badge{font-family:'JetBrains Mono',monospace;font-size:.78rem;font-weight:500;color:var(--text2);background:var(--bg4);border:1px solid var(--border);border-radius:var(--rxs);padding:4px 10px}
+
+/* MEET LINK */
+.meet-link-wrap{background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);border-radius:var(--rsm);padding:10px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.meet-link-text{font-size:.8rem;color:var(--accent3);font-family:'JetBrains Mono',monospace;flex:1;word-break:break-all}
+.meet-link-icon{font-size:1.2rem}
+
+/* NOTIFICATIONS */
+.notif{position:fixed;bottom:24px;right:24px;background:#fff;border:1px solid var(--border);border-radius:var(--rsm);padding:12px 16px;font-size:.82rem;z-index:999;animation:slideIn .3s ease;max-width:300px;display:flex;align-items:center;gap:8px;box-shadow:0 8px 32px rgba(124,58,237,.2)}
+@keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+.notif.success{border-color:rgba(16,185,129,.4);color:var(--green)}
+.notif.error{border-color:rgba(239,68,68,.4);color:var(--red)}
+.notif.info{border-color:rgba(59,130,246,.4);color:var(--accent3)}
+
+.vc-meeting-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
+.vc-meeting-row:last-child{border-bottom:none}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="bg-glow"></div>
+<div class="bg-glow2"></div>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">🎙</div>
+    <div class="login-title">Meeting Assistant</div>
+    <div class="login-sub">AI-powered meeting scheduler, recorder & minutes generator for your team</div>
+    <button class="google-btn" onclick="handleGoogleLogin()">
+      <img src="https://www.google.com/favicon.ico" alt="G">
+      Continue with Google
+    </button>
+    <div id="g-signin-btn" style="display:flex;justify-content:center;margin-top:8px"></div>
+    <div class="login-features">
+      <div class="feat-item"><span class="feat-icon">📅</span>Schedule meetings</div>
+      <div class="feat-item"><span class="feat-icon">📧</span>Gmail invites</div>
+      <div class="feat-item"><span class="feat-icon">🎙</span>AI transcription</div>
+      <div class="feat-item"><span class="feat-icon">📋</span>Auto MoM</div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <!-- Gemini Key Bar -->
+  <div class="gemini-bar">
+    <span class="g-label">🔑 Gemini Key:</span>
+    <input type="password" class="g-input" id="g-key" placeholder="AIza... (free from aistudio.google.com)"/>
+    <button class="g-save" onclick="saveGeminiKey()">Save</button>
+    <span class="g-badge" id="g-badge"></span>
+    <a href="https://aistudio.google.com/app/apikey" target="_blank" style="font-size:.7rem;color:var(--accent);text-decoration:none">Get free key →</a>
+  </div>
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="app-logo">🎙</div>
+      <div class="app-name">Meeting Assistant</div>
+    </div>
+    <div class="topbar-right">
+      <div class="nav-tabs">
+        <button class="nav-tab active" onclick="showPage('dashboard')">Dashboard</button>
+        <button class="nav-tab" onclick="showPage('schedule')">Schedule</button>
+        <button class="nav-tab" onclick="showPage('videocall')">Video Call</button>
+        <button class="nav-tab" onclick="showPage('room')">MoM Room</button>
+        <button class="nav-tab" onclick="showPage('chat')">💬 Team Chat</button>
+        <button class="nav-tab" id="admin-tab" onclick="showPage('admin')" style="display:none;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border-color:#f59e0b">⚙ Admin</button>
+      </div>
+      <div style="position:relative">
+        <div class="user-chip" onclick="toggleProfile()">
+          <img class="user-avatar" id="user-avatar" src="" alt="">
+          <span class="user-name" id="user-name"></span>
+          <span style="font-size:.65rem;color:var(--text2);margin-left:2px">&#9660;</span>
+        </div>
+        <div id="profile-dropdown" style="display:none;position:absolute;right:0;top:44px;background:#fff;border:1px solid var(--border);border-radius:var(--rsm);padding:10px;min-width:210px;z-index:300;box-shadow:0 8px 32px rgba(124,58,237,.2)">
+          <div style="text-align:center;padding-bottom:10px;border-bottom:1px solid var(--border);margin-bottom:8px">
+            <img id="pd-pic" src="" style="width:48px;height:48px;border-radius:50%;margin:0 auto 6px;display:block;border:2px solid var(--border2)">
+            <div id="pd-name" style="font-size:.9rem;font-weight:600"></div>
+            <div id="pd-email" style="font-size:.72rem;color:var(--text2);margin-top:2px"></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px">
+            <button class="btn btn-sm" style="width:100%;justify-content:center" onclick="showPage('schedule');toggleProfile()">📅 Schedule Meeting</button>
+            <button class="btn btn-sm" style="width:100%;justify-content:center" onclick="showPage('dashboard');toggleProfile()">📊 Dashboard</button>
+            <button class="btn btn-sm btn-red" style="width:100%;justify-content:center;margin-top:4px" onclick="signOut()">🚪 Sign Out</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="page active" id="page-dashboard">
+    <div class="dash-grid">
+      <div class="stat-card">
+        <div class="stat-icon">📅</div>
+        <div class="stat-label">Upcoming</div>
+        <div class="stat-val" id="stat-upcoming">0</div>
+        <div class="stat-sub">scheduled meetings</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">✅</div>
+        <div class="stat-label">Completed</div>
+        <div class="stat-val" id="stat-done">0</div>
+        <div class="stat-sub">meetings this month</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">📋</div>
+        <div class="stat-label">MoMs Generated</div>
+        <div class="stat-val" id="stat-moms">0</div>
+        <div class="stat-sub">minutes of meeting</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">👥</div>
+        <div class="stat-label">Participants</div>
+        <div class="stat-val" id="stat-participants">0</div>
+        <div class="stat-sub">total invited</div>
+      </div>
+    </div>
+
+    <div class="section-title">Upcoming Meetings</div>
+    <div class="upcoming-list" id="upcoming-list">
+      <div style="color:var(--text3);font-size:.85rem;padding:2rem;text-align:center">No meetings scheduled yet. <a href="#" onclick="showPage('schedule')" style="color:var(--accent)">Schedule one →</a></div>
+    </div>
+  </div>
+
+  <!-- SCHEDULE -->
+  <div class="page" id="page-schedule">
+    <div class="schedule-form">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:1.25rem">
+        <button class="btn btn-sm" onclick="showPage('dashboard')" style="padding:5px 10px">← Back</button>
+        <div style="font-size:1.1rem;font-weight:700;letter-spacing:-.01em">📅 Schedule New Meeting</div>
+      </div>
+      <div class="form-grid">
+        <div class="form-field full">
+          <label class="form-label">Meeting Title</label>
+          <input type="text" class="form-input" id="s-title" placeholder="e.g. Q1 Review, Product Planning..."/>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Start Date & Time</label>
+          <input type="datetime-local" class="form-input" id="s-start-date"/>
+        </div>
+        <div class="form-field">
+          <label class="form-label">End Date & Time</label>
+          <input type="datetime-local" class="form-input" id="s-end-date"/>
+        </div>
+        <div class="form-field full">
+          <label class="form-label">Participants (press Enter or comma to add)</label>
+          <div class="participant-tags" id="ptags" onclick="document.getElementById('ptag-input').focus()">
+            <input type="text" class="ptag-input" id="ptag-input" placeholder="Type email and press Enter..."/>
+          </div>
+        </div>
+        <div class="form-field full">
+          <label class="form-label">Quick Time Slots</label>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button type="button" class="btn btn-sm" onclick="setQuickTime(30)">+30 min</button>
+            <button type="button" class="btn btn-sm" onclick="setQuickTime(60)">+1 hour</button>
+            <button type="button" class="btn btn-sm" onclick="setQuickTime(90)">+1.5 hrs</button>
+            <button type="button" class="btn btn-sm" onclick="setQuickTime(120)">+2 hours</button>
+            <button type="button" class="btn btn-sm" onclick="setQuickTimeTomorrow(9,10)">Tomorrow 9am</button>
+            <button type="button" class="btn btn-sm" onclick="setQuickTimeTomorrow(14,15)">Tomorrow 2pm</button>
+          </div>
+        </div>
+        <div class="form-field full">
+          <label class="form-label">Meeting Mode</label>
+          <div class="mode-toggle">
+            <button class="mode-btn active" id="mode-online" onclick="setMode('online')">🌐 Online (Google Meet)</button>
+            <button class="mode-btn" id="mode-offline" onclick="setMode('offline')">🏢 Offline (In-Person)</button>
+          </div>
+        </div>
+        <div class="form-field" id="location-field" style="display:none">
+          <label class="form-label">Location</label>
+          <input type="text" class="form-input" id="s-location" placeholder="Conference Room / Address"/>
+        </div>
+        <div class="form-field full">
+          <label class="form-label">Agenda / Description</label>
+          <textarea class="form-input" id="s-agenda" rows="3" placeholder="What will be discussed?"></textarea>
+        </div>
+        <div class="form-field full">
+          <label class="form-label">Send Reminders</label>
+          <div class="reminder-row">
+            <div class="reminder-chip active" data-min="1440" onclick="toggleReminder(this)">1 day before</div>
+            <div class="reminder-chip active" data-min="60" onclick="toggleReminder(this)">1 hour before</div>
+            <div class="reminder-chip" data-min="30" onclick="toggleReminder(this)">30 min before</div>
+            <div class="reminder-chip" data-min="15" onclick="toggleReminder(this)">15 min before</div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:1.25rem;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="scheduleMeeting()">📅 Schedule & Send Invites</button>
+        <button class="btn" onclick="clearScheduleForm()">✕ Clear</button>
+      </div>
+      <div id="schedule-result" style="margin-top:1rem"></div>
+    </div>
+  </div>
+
+  <!-- TEAM CHAT -->
+  <div class="page" id="page-chat">
+    <div style="height:calc(100vh - 160px);display:flex;gap:12px">
+
+      <!-- Left: People & Channels -->
+      <div style="width:220px;flex-shrink:0;display:flex;flex-direction:column;gap:8px">
+        <!-- Online users -->
+        <div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:0 2px 12px rgba(124,58,237,.06)">
+          <div style="padding:10px 14px;border-bottom:1px solid var(--border);background:#faf5ff;font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text2);display:flex;align-items:center;justify-content:space-between">
+            People <span id="chat-online-count" style="background:#ede9fe;color:#7c3aed;padding:1px 7px;border-radius:20px;font-size:.65rem">0</span>
+          </div>
+          <div id="chat-people-list" style="padding:8px;max-height:200px;overflow-y:auto">
+            <div style="color:var(--text3);font-size:.75rem;padding:6px">Loading...</div>
+          </div>
+        </div>
+        <!-- Channels -->
+        <div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:0 2px 12px rgba(124,58,237,.06)">
+          <div style="padding:10px 14px;border-bottom:1px solid var(--border);background:#faf5ff;font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text2)">Channels</div>
+          <div style="padding:6px">
+            <button class="btn btn-sm" id="ch-general" onclick="switchChannel('general')" style="width:100%;justify-content:flex-start;margin-bottom:2px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border-color:#7c3aed"># general</button>
+            <button class="btn btn-sm" id="ch-meetings" onclick="switchChannel('meetings')" style="width:100%;justify-content:flex-start;margin-bottom:2px"># meetings</button>
+            <button class="btn btn-sm" id="ch-announcements" onclick="switchChannel('announcements')" style="width:100%;justify-content:flex-start;margin-bottom:2px"># announcements</button>
+            <button class="btn btn-sm" id="ch-random" onclick="switchChannel('random')" style="width:100%;justify-content:flex-start"># random</button>
+          </div>
+        </div>
+        <!-- Chat requests -->
+        <div id="chat-requests-panel" style="display:none;background:#fff;border:1px solid rgba(245,158,11,.3);border-radius:var(--radius);overflow:hidden">
+          <div style="padding:8px 12px;background:rgba(245,158,11,.1);font-size:.72rem;font-weight:600;color:#d97706">📨 Chat Requests</div>
+          <div id="chat-requests-list" style="padding:6px"></div>
+        </div>
+      </div>
+
+      <!-- Right: Chat window -->
+      <div style="flex:1;background:#fff;border:1px solid var(--border);border-radius:var(--radius);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 4px 24px rgba(124,58,237,.08)">
+        <div style="padding:10px 16px;border-bottom:1px solid var(--border);background:#faf5ff;display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:8px">
+            <button class="btn btn-sm" onclick="showPage('dashboard')">← Back</button>
+            <span style="font-size:.85rem;font-weight:600" id="chat-channel-label"># general</span>
+          </div>
+          <span style="font-size:.7rem;color:var(--text3)" id="chat-msg-count">0 messages</span>
+        </div>
+        <div id="chat-messages" style="flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:8px">
+          <div style="text-align:center;color:var(--text3);font-size:.8rem;padding:2rem">Connecting... 💬</div>
+        </div>
+        <div style="padding:10px 14px;border-top:1px solid var(--border);background:#faf5ff;display:flex;gap:8px;align-items:center">
+          <input type="text" id="chat-input" placeholder="Type a message and press Enter..." style="flex:1;background:#fff;border:1px solid var(--border);border-radius:var(--rsm);padding:8px 12px;font-size:.875rem;color:var(--text);font-family:Outfit,sans-serif;outline:none" onkeydown="if(event.key==='Enter')sendChatMsg()"/>
+          <button class="btn btn-primary" onclick="sendChatMsg()">Send ↵</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<!-- ADMIN PANEL -->
+  <div class="page" id="page-admin">
+    <!-- Admin Login Gate -->
+    <div id="admin-gate" style="max-width:400px;margin:3rem auto;background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:2rem;text-align:center;box-shadow:0 4px 24px rgba(124,58,237,.1)">
+      <div style="font-size:2rem;margin-bottom:12px">🔐</div>
+      <div style="font-size:1.1rem;font-weight:700;margin-bottom:6px">Admin Access</div>
+      <div style="font-size:.8rem;color:var(--text2);margin-bottom:1.25rem">Enter admin password to continue</div>
+      <input type="password" id="admin-pwd-input" class="form-input" placeholder="Admin password" style="margin-bottom:10px;text-align:center"/>
+      <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="verifyAdmin()">🔓 Enter Admin Panel</button>
+      <div id="admin-pwd-err" style="color:var(--red);font-size:.75rem;margin-top:8px;display:none">Incorrect password</div>
+    </div>
+
+    <!-- Admin Dashboard -->
+    <div id="admin-panel" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:10px">
+        <div style="font-size:1.1rem;font-weight:700">⚙ Admin Dashboard</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-sm" onclick="refreshAdminData()">🔄 Refresh</button>
+          <button class="btn btn-sm btn-primary" onclick="sendAnnouncement()">📢 Announcement</button>
+          <button class="btn btn-sm" onclick="exportAdminData()">⬇ Export CSV</button>
+        </div>
+      </div>
+
+      <!-- Stats Row -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:1.25rem">
+        <div class="stat-card" style="border-left-color:#7c3aed">
+          <div class="stat-icon">👥</div>
+          <div class="stat-label">Total Users</div>
+          <div class="stat-val" id="a-total-users">0</div>
+          <div class="stat-sub">registered</div>
+        </div>
+        <div class="stat-card" style="border-left-color:#059669">
+          <div class="stat-icon">✅</div>
+          <div class="stat-label">Active Today</div>
+          <div class="stat-val" id="a-active-today">0</div>
+          <div class="stat-sub">logged in today</div>
+        </div>
+        <div class="stat-card" style="border-left-color:#2563eb">
+          <div class="stat-icon">📅</div>
+          <div class="stat-label">Total Meetings</div>
+          <div class="stat-val" id="a-total-meetings">0</div>
+          <div class="stat-sub">scheduled</div>
+        </div>
+        <div class="stat-card" style="border-left-color:#d97706">
+          <div class="stat-icon">📋</div>
+          <div class="stat-label">MoMs Generated</div>
+          <div class="stat-val" id="a-total-moms">0</div>
+          <div class="stat-sub">minutes created</div>
+        </div>
+        <div class="stat-card" style="border-left-color:#dc2626">
+          <div class="stat-icon">🚫</div>
+          <div class="stat-label">Blocked Users</div>
+          <div class="stat-val" id="a-blocked">0</div>
+          <div class="stat-sub">access denied</div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div style="display:flex;gap:4px;background:#ede9fe;border-radius:var(--rsm);padding:3px;margin-bottom:1rem;width:fit-content">
+        <button class="btn btn-sm" id="atab-users" onclick="showAdminTab('users')" style="background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border-color:#7c3aed">👥 Users</button>
+        <button class="btn btn-sm" id="atab-meetings" onclick="showAdminTab('meetings')" style="background:transparent;border-color:transparent;color:var(--text2)">📅 Meetings</button>
+        <button class="btn btn-sm" id="atab-moms" onclick="showAdminTab('moms')" style="background:transparent;border-color:transparent;color:var(--text2)">📋 MoMs</button>
+      </div>
+
+      <!-- Users Table -->
+      <div id="atab-users-content" style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:0 2px 12px rgba(124,58,237,.06)">
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border);background:#faf5ff;display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text2)">All Users</span>
+          <input type="text" id="user-search" placeholder="Search users..." oninput="filterUsers()" style="background:#fff;border:1px solid var(--border);border-radius:var(--rxs);padding:4px 10px;font-size:.75rem;color:var(--text);font-family:Outfit,sans-serif;outline:none;width:180px"/>
+        </div>
+        <div id="users-table" style="overflow-x:auto">
+          <div style="padding:2rem;text-align:center;color:var(--text3);font-size:.85rem">Loading users...</div>
+        </div>
+      </div>
+
+      <!-- Meetings Table -->
+      <div id="atab-meetings-content" style="display:none;background:#fff;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:0 2px 12px rgba(124,58,237,.06)">
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border);background:#faf5ff">
+          <span style="font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text2)">All Meetings</span>
+        </div>
+        <div id="meetings-table" style="overflow-x:auto">
+          <div style="padding:2rem;text-align:center;color:var(--text3);font-size:.85rem">Loading meetings...</div>
+        </div>
+      </div>
+
+      <!-- MoMs Table -->
+      <div id="atab-moms-content" style="display:none;background:#fff;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:0 2px 12px rgba(124,58,237,.06)">
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border);background:#faf5ff">
+          <span style="font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text2)">All MoMs Generated</span>
+        </div>
+        <div id="moms-table" style="overflow-x:auto">
+          <div style="padding:2rem;text-align:center;color:var(--text3);font-size:.85rem">Loading MoMs...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<!-- VIDEO CALL -->
+  <div class="page" id="page-videocall">
+    <div style="max-width:900px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem">
+        <button class="btn btn-sm" onclick="showPage('dashboard')">← Back</button>
+        <div style="font-size:1.1rem;font-weight:700;letter-spacing:-.01em">🎥 Video Meeting Room</div>
+      </div>
+      <div style="background:#faf5ff;border:1px solid var(--border);border-radius:var(--rsm);padding:10px 14px;margin-bottom:1rem;font-size:.78rem;color:var(--text2);display:flex;align-items:flex-start;gap:8px">
+        <span>💡</span>
+        <span><strong>How MoM works in video calls:</strong> Start your meeting → click <strong>Capture for MoM</strong> button inside the call → it records in the background → after call ends click <strong>MoM Room</strong> tab → Transcribe → Generate MoM</span>
+      </div>
+
+      <!-- Join/Create Room -->
+      <div id="vc-setup" style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;margin-bottom:1rem;box-shadow:0 4px 24px rgba(124,58,237,.08)">
+        <div style="font-size:.85rem;font-weight:600;color:var(--text2);margin-bottom:1rem;text-transform:uppercase;letter-spacing:.08em">Start or Join a Meeting</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+          <div>
+            <label style="font-size:.72rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:6px">Your Name</label>
+            <input type="text" id="vc-name" class="form-input" placeholder="e.g. Sunny Gupta" style="background:#faf5ff"/>
+          </div>
+          <div>
+            <label style="font-size:.72rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:6px">Room Name / Meeting ID</label>
+            <input type="text" id="vc-room" class="form-input" placeholder="e.g. TeamMeeting2026" style="background:#faf5ff"/>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+          <button class="btn btn-primary" onclick="startVideoCall()">🎥 Start / Join Meeting</button>
+          <button class="btn" onclick="generateRoomId()">🎲 Generate Room ID</button>
+          <button class="btn" id="vc-copy-btn" onclick="copyRoomLink()" style="display:none">🔗 Copy Invite Link</button>
+        </div>
+        <div id="vc-link-wrap" style="display:none;background:#faf5ff;border:1px solid var(--border);border-radius:var(--rsm);padding:10px 14px;font-size:.78rem;color:var(--text2)">
+          <div style="margin-bottom:6px">Share this link with participants: <span id="vc-link" style="color:var(--accent);font-weight:600"></span></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+            <a id="wa-share-btn" href="#" target="_blank" class="btn btn-sm btn-green" style="text-decoration:none">🟢 Share on WhatsApp</a>
+            <a id="tg-share-btn" href="#" target="_blank" class="btn btn-sm" style="text-decoration:none;background:rgba(37,150,190,.12);border-color:rgba(37,150,190,.3);color:#2596be">✈ Share on Telegram</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- In-Meeting Chat -->
+      <div id="vc-chat-panel" style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:0;margin-bottom:1rem;box-shadow:0 4px 24px rgba(124,58,237,.08);overflow:hidden">
+        <div style="padding:10px 16px;border-bottom:1px solid var(--border);background:#faf5ff;display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text2)">💬 Meeting Chat</span>
+          <button class="btn btn-sm" onclick="toggleVcChat()" id="vc-chat-toggle">Hide</button>
+        </div>
+        <div id="vc-chat-body" style="height:200px;overflow-y:auto;padding:10px 14px;display:flex;flex-direction:column;gap:6px">
+          <div style="text-align:center;color:var(--text3);font-size:.75rem">Chat with meeting participants in real time</div>
+        </div>
+        <div style="padding:8px 12px;border-top:1px solid var(--border);background:#faf5ff;display:flex;gap:8px">
+          <input type="text" id="vc-chat-input" placeholder="Type a message during meeting..." style="flex:1;background:#fff;border:1px solid var(--border);border-radius:var(--rsm);padding:7px 11px;font-size:.82rem;color:var(--text);font-family:Outfit,sans-serif;outline:none" onkeydown="if(event.key==='Enter')sendVcChat()"/>
+          <button class="btn btn-primary btn-sm" onclick="sendVcChat()">Send</button>
+        </div>
+      </div>
+
+      <!-- Upcoming meetings quick join -->
+      <div id="vc-meetings-list" style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;margin-bottom:1rem;box-shadow:0 4px 24px rgba(124,58,237,.08)">
+        <div style="font-size:.75rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px">Quick Join — Scheduled Meetings</div>
+        <div id="vc-meetings-inner">
+          <div style="color:var(--text3);font-size:.82rem">No upcoming meetings. Schedule one first.</div>
+        </div>
+      </div>
+
+      <!-- Jitsi container -->
+      <div id="jitsi-container" style="display:none;background:#000;border-radius:var(--radius);overflow:hidden;border:2px solid var(--accent)">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:var(--accent);color:#fff">
+          <span style="font-size:.85rem;font-weight:600" id="vc-room-label">Meeting Room</span>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-sm" onclick="toggleMoMCapture()" id="mom-capture-btn" style="background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.4);color:#fff">🎙 Capture for MoM</button>
+            <button class="btn btn-sm" onclick="endVideoCall()" style="background:rgba(239,68,68,.8);border-color:var(--red);color:#fff">End Call</button>
+          </div>
+        </div>
+        <div id="jitsi-frame" style="height:540px"></div>
+      </div>
+    </div>
+  </div>
+
+<!-- MEETING ROOM -->
+  <div class="page" id="page-room">
+    <div class="room-header">
+      <div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <button class="btn btn-sm" onclick="showPage('dashboard')">← Back</button>
+          <div class="room-title" id="room-title">Meeting Room</div>
+        </div>
+        <div class="room-meta">
+          <span id="room-date">—</span>
+          <span id="room-participants-label">—</span>
+          <span id="room-mode-label">—</span>
+        </div>
+      </div>
+      <div class="room-controls">
+        <div class="timer-badge" id="room-timer">00:00</div>
+        <button class="btn btn-green" id="rec-start-btn" onclick="startRecording()">⏺ Start Recording</button>
+        <button class="btn btn-red"   id="rec-stop-btn"  onclick="stopRecording()" disabled>■ Stop</button>
+        <button class="btn btn-purple" id="transcribe-btn" onclick="transcribeAudio()" disabled>⚡ Transcribe</button>
+        <button class="btn btn-primary" id="mom-btn" onclick="generateMoM()" disabled>✦ Generate MoM</button>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap" id="export-row" style="display:none">
+      <button class="btn btn-sm" id="pdf-btn" onclick="exportPDF()" disabled>⬇ PDF</button>
+      <button class="btn btn-sm" id="word-btn" onclick="exportWord()" disabled>⬇ Word</button>
+      <button class="btn btn-sm" id="email-mom-btn" onclick="openEmailMoM()" disabled>✉ Email MoM</button>
+      <button class="btn btn-sm" id="copy-btn" onclick="copyMoM()" disabled>⎘ Copy</button>
+    </div>
+
+    <div class="room-grid">
+      <!-- LEFT: Transcript -->
+      <div class="room-panel">
+        <div class="room-panel-head">
+          <span class="room-panel-title">Live Transcript</span>
+          <select style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--rxs);padding:3px 7px;font-size:.7rem;color:var(--text);outline:none;cursor:pointer" id="room-lang">
+            <option value="en-IN">English (India)</option>
+            <option value="hi-IN">Hindi</option>
+            <option value="mr-IN">Marathi</option>
+            <option value="en-US">English (US)</option>
+          </select>
+        </div>
+        <!-- PTT for offline, info for online -->
+        <div class="ptt-wrap" id="ptt-section">
+          <button class="ptt-btn" id="ptt-btn"
+            onmousedown="pttStart()" onmouseup="pttStop()" ontouchstart="pttStart()" ontouchend="pttStop()">
+            🎤 Hold to Speak
+          </button>
+          <span class="ptt-hint" id="ptt-hint">Hold the button while speaking</span>
+        </div>
+        <div class="wave-wrap" id="wave-wrap">
+          <canvas class="wavecanvas" id="wavecanvas"></canvas>
+        </div>
+        <div class="status-strip" id="status-strip">
+          <div class="status-dot" id="status-dot"></div>
+          <span id="status-text">Ready to record</span>
+        </div>
+        <div class="progress-wrap" id="progress-wrap">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+        <div class="room-panel-body" id="transcript-body">
+          <div class="empty-state">
+            <div class="ei">🎤</div>
+            <div style="font-size:.82rem">Press <strong>Start Recording</strong> then use<br><strong>Push-to-Talk</strong> while speaking</div>
+            <div style="font-size:.7rem;color:var(--text3);margin-top:8px;line-height:1.6;max-width:260px">
+              💡 <strong>For Google Meet:</strong> Open your Meet link, join the call, then hold Push-to-Talk each time YOU speak. After the meeting click Transcribe → Generate MoM.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: MOM -->
+      <div class="room-panel">
+        <div class="room-panel-head">
+          <span class="room-panel-title">Minutes of Meeting</span>
+        </div>
+        <div class="room-panel-body" id="mom-body">
+          <div class="empty-state">
+            <div class="ei">📋</div>
+            <div>MoM will appear here<br><span style="font-size:.7rem">Record → Transcribe → Generate MoM</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- EMAIL MOM MODAL -->
+<div class="modal-overlay" id="email-mom-modal">
+  <div class="modal">
+    <h3>✉ Email Minutes of Meeting</h3>
+    <label>To</label>
+    <input type="text" id="em-to" placeholder="colleague@company.com, manager@company.com"/>
+    <label>Subject</label>
+    <input type="text" id="em-sub"/>
+    <label>Message</label>
+    <textarea id="em-msg" placeholder="Please find the minutes attached..."></textarea>
+    <div class="modal-btns">
+      <button class="btn" onclick="closeModal('email-mom-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="sendMoMEmail()">Send via Gmail</button>
+    </div>
+  </div>
+</div>
+
+<!-- SELECT MEETING MODAL -->
+<div class="modal-overlay" id="select-meeting-modal">
+  <div class="modal">
+    <h3>🎙 Start Meeting Room</h3>
+    <label>Select Meeting</label>
+    <select id="sel-meeting" style="color:var(--text)">
+      <option value="new">— Start new ad-hoc meeting —</option>
+    </select>
+    <label>Your Name (for speaker label)</label>
+    <input type="text" id="sel-speaker" placeholder="e.g. Sunny"/>
+    <div class="modal-btns">
+      <button class="btn" onclick="closeModal('select-meeting-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="enterRoom()">Enter Room</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var GOOGLE_CLIENT_ID = '995757075932-19m6pb085ara6lqsqljskfq5dcfbrv1a.apps.googleusercontent.com';
+var ABLY_KEY = 'QSqbpg.in60ug:g_4P1XF8rCQAorxCpXFbm1_Vtxw0liYkMjnkql-LVB0';
+var ablyClient = null;
+var ablyChannel = null;
+var dmChannel = null;
+var currentDmUser = null;
+var chatRequests = {};
+var pendingRequests = {};
+var JSONBIN_KEY = '$2a$10$WMQtbUMDCXuLMiCzMw/BYuEUOeIihx.9BidthlxDjsl5q3pHq48eu';
+var JSONBIN_URL = 'https://api.jsonbin.io/v3/b';
+var ADMIN_EMAIL = 'gogassunny@gmail.com';
+var ADMIN_PASSWORD = 'SunnyAdmin@2026';
+var SHARED_BIN_ID = '69ca4f9caaba882197a88b97'; // Hardcoded global bin
+var GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=';
+var SCOPES = 'openid profile email';
+
+// STATE
+var gUser = null, gToken = null, geminiKey = '', meetings = [], participants = [];
+var meetingMode = 'online', activeReminders = ['1440','60'];
+var mediaRecorder = null, audioChunks = [], audioBlob = null;
+var isRecording = false, isPTT = false, timerInt = null, secs = 0;
+var analyser = null, animFrame = null, audioCtx = null;
+var transcriptSegs = [], momData = null, momPlain = '';
+var currentMeeting = null, mySpeakerName = 'Me';
+var streamRef = null;
+
+var SPK = [
+  {bg:'rgba(59,130,246,.18)',b:'rgba(59,130,246,.5)',t:'#60a5fa'},
+  {bg:'rgba(16,185,129,.18)',b:'rgba(16,185,129,.5)',t:'#34d399'},
+  {bg:'rgba(139,92,246,.18)',b:'rgba(139,92,246,.5)',t:'#a78bfa'},
+  {bg:'rgba(245,158,11,.18)',b:'rgba(245,158,11,.5)',t:'#fbbf24'},
+  {bg:'rgba(239,68,68,.18)',b:'rgba(239,68,68,.5)',t:'#f87171'},
+  {bg:'rgba(20,184,166,.18)',b:'rgba(20,184,166,.5)',t:'#2dd4bf'}
+];
+
+// ── INIT ─────────────────────────────────────────────────
+window.onload = function() {
+  geminiKey = localStorage.getItem('gemini_key') || '';
+  // Restore session if refreshed
+  var savedUser = sessionStorage.getItem('ma_user');
+  var savedToken = sessionStorage.getItem('ma_token');
+  if (savedUser && savedToken) {
+    gUser = JSON.parse(savedUser);
+    gToken = savedToken;
+    document.getElementById('user-name').textContent = gUser.given_name || gUser.name || gUser.email;
+    document.getElementById('user-avatar').src = gUser.picture || '';
+    var pdPic = document.getElementById('pd-pic');
+    var pdName = document.getElementById('pd-name');
+    var pdEmail = document.getElementById('pd-email');
+    if(pdPic) pdPic.src = gUser.picture || '';
+    if(pdName) pdName.textContent = gUser.name || '';
+    if(pdEmail) pdEmail.textContent = gUser.email || '';
+    var vcName = document.getElementById('vc-name');
+    if(vcName) vcName.value = gUser.name || '';
+    if(gUser.email === ADMIN_EMAIL) {
+      var adminTab = document.getElementById('admin-tab');
+      if(adminTab) adminTab.style.display = 'inline-flex';
+    }
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').classList.add('show');
+    updateDashboard();
+    trackUserLogin(gUser);
+    initAbly();
+  }
+  if (geminiKey) { document.getElementById('g-key').value = geminiKey; showGBadge(true,'Key loaded'); }
+  meetings = JSON.parse(localStorage.getItem('meetings') || '[]');
+  // Set default times for schedule form
+  var now = new Date();
+  var soon = new Date(now.getTime() + 3600000);
+  var later = new Date(now.getTime() + 7200000);
+  var soonDate = soon.toISOString().slice(0,10);
+  var soonTime = soon.toTimeString().slice(0,5);
+  var laterDate = later.toISOString().slice(0,10);
+  var laterTime = later.toTimeString().slice(0,5);
+  if(document.getElementById('s-start-date')) {
+    document.getElementById('s-start-date').value = soonDate + 'T' + soonTime;
+    document.getElementById('s-end-date').value = laterDate + 'T' + laterTime;
+  }
+  var mdateEl = document.getElementById('mdate'); if(mdateEl) mdateEl.valueAsDate = new Date();
+  setupParticipantInput();
+  setupReminderChips();
+  // Pre-initialize Google ID
+  if (typeof google !== 'undefined') {
+    google.accounts.id.initialize({
+      client_id: GOOGLE_CLIENT_ID,
+      callback: handleCredentialResponse,
+      auto_select: false
+    });
+  }
+};
+
+function toLocalInput(d) {
+  var off = d.getTimezoneOffset();
+  var local = new Date(d.getTime() - off*60000);
+  return local.toISOString().slice(0,16);
+}
+
+function pad(n) { return String(n).padStart(2,'0'); }
+function formatSize(b) { if(b<1048576) return (b/1024).toFixed(1)+'KB'; return (b/1048576).toFixed(1)+'MB'; }
+
+// ── GEMINI KEY ────────────────────────────────────────────
+function saveGeminiKey() {
+  var v = document.getElementById('g-key').value.trim();
+  if (!v) { showGBadge(false,'Enter key'); return; }
+  if (!v.startsWith('AIza')) { showGBadge(false,'Invalid'); return; }
+  geminiKey = v; localStorage.setItem('gemini_key', v); showGBadge(true,'Saved ✓');
+}
+function showGBadge(ok, msg) {
+  var el = document.getElementById('g-badge');
+  el.style.display = 'inline'; el.className = 'g-badge '+(ok?'ok':'bad'); el.textContent = msg;
+}
+
+// ── GOOGLE AUTH ───────────────────────────────────────────
+function handleGoogleLogin() {
+  if (typeof google === 'undefined') { notify('Google script not loaded yet. Please wait and try again.','error'); return; }
+  google.accounts.id.initialize({
+    client_id: GOOGLE_CLIENT_ID,
+    callback: handleCredentialResponse,
+    auto_select: false,
+    cancel_on_tap_outside: true
+  });
+  google.accounts.id.prompt(function(notification) {
+    if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+      // Fallback to popup
+      google.accounts.id.renderButton(
+        document.getElementById('g-signin-btn'),
+        { theme: 'outline', size: 'large', width: 300 }
+      );
+    }
+  });
+}
+
+function handleCredentialResponse(response) {
+  var base64 = response.credential.split('.')[1];
+  var pad = base64.length % 4;
+  if (pad) base64 += '='.repeat(4 - pad);
+  var json = atob(base64.replace(/-/g,'+').replace(/_/g,'/'));
+  var u = JSON.parse(json);
+  gUser = { name: u.name, email: u.email, picture: u.picture, given_name: u.given_name };
+  gToken = response.credential;
+  // Persist login
+  sessionStorage.setItem('ma_user', JSON.stringify(gUser));
+  sessionStorage.setItem('ma_token', gToken); // ID token
+  document.getElementById('user-name').textContent = u.given_name || u.name || u.email;
+  document.getElementById('user-avatar').src = u.picture || '';
+  var pdPic = document.getElementById('pd-pic');
+  var pdName = document.getElementById('pd-name');
+  var pdEmail = document.getElementById('pd-email');
+  if(pdPic) pdPic.src = u.picture || '';
+  if(pdName) pdName.textContent = u.name || '';
+  if(pdEmail) pdEmail.textContent = u.email || '';
+  var vcName = document.getElementById('vc-name');
+  if(vcName) vcName.value = u.name || '';
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').classList.add('show');
+  updateDashboard();
+  notify('Welcome, ' + (u.given_name||u.name) + '!','success');
+  var ann = localStorage.getItem('admin_announcement');
+  if (ann) { setTimeout(function(){ notify('📢 ' + ann, 'info'); }, 2000); }
+  trackUserLogin(gUser);
+  initAbly();
+}
+
+function fetchUserInfo() {
+  fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+    headers: { Authorization: 'Bearer ' + gToken }
+  }).then(function(r){ return r.json(); }).then(function(u) {
+    gUser = u;
+    document.getElementById('user-name').textContent = u.given_name || u.name || u.email;
+    var vcName = document.getElementById('vc-name');
+    if(vcName) vcName.value = u.name || u.email || '';
+    document.getElementById('user-avatar').src = u.picture || '';
+    var pdPic = document.getElementById('pd-pic');
+    var pdName = document.getElementById('pd-name');
+    var pdEmail = document.getElementById('pd-email');
+    if(pdPic) pdPic.src = u.picture || '';
+    if(pdName) pdName.textContent = u.name || '';
+    if(pdEmail) pdEmail.textContent = u.email || '';
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').classList.add('show');
+    updateDashboard();
+    notify('Welcome, ' + (u.given_name||u.name) + '!','success');
+  var ann = localStorage.getItem('admin_announcement');
+  if (ann) { setTimeout(function(){ notify('📢 ' + ann, 'info'); }, 2000); }
+  trackUserLogin(gUser);
+  initAbly();
+  }).catch(function(e){ notify('Could not fetch user info','error'); });
+}
+
+function signOut() {
+  gToken = null; gUser = null;
+  sessionStorage.removeItem('ma_user');
+  sessionStorage.removeItem('ma_token');
+  if(ablyClient) { try { ablyClient.close(); } catch(e){} ablyClient = null; }
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app').classList.remove('show');
+}
+
+// ── NAVIGATION ────────────────────────────────────────────
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
+  document.querySelectorAll('.nav-tab').forEach(function(t){ t.classList.remove('active'); });
+  var page = document.getElementById('page-'+id);
+  if(page) page.classList.add('active');
+  var tabs = document.querySelectorAll('.nav-tab');
+  var names = ['dashboard','schedule','videocall','room','chat','admin'];
+  var idx = names.indexOf(id);
+  if(idx >= 0 && tabs[idx]) tabs[idx].classList.add('active');
+  if (id === 'dashboard') updateDashboard();
+  if (id === 'room') openSelectMeetingModal();
+  if (id === 'videocall') { updateVcMeetingsList(); loadVcChat(); }
+  if (id === 'admin') loadAdminPanel();
+  if (id === 'chat') loadChat();
+  // Close profile dropdown if open
+  var dd = document.getElementById('profile-dropdown');
+  if(dd) dd.style.display = 'none';
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────
+function updateDashboard() {
+  var now = new Date();
+  var upcoming = meetings.filter(function(m){ return new Date(m.start) > now; });
+  var done = meetings.filter(function(m){ return new Date(m.start) <= now; });
+  var totalP = meetings.reduce(function(a,m){ return a+(m.participants||[]).length; },0);
+  var moms = meetings.filter(function(m){ return m.hasMoM; }).length;
+  document.getElementById('stat-upcoming').textContent = upcoming.length;
+  document.getElementById('stat-done').textContent = done.length;
+  document.getElementById('stat-moms').textContent = moms;
+  document.getElementById('stat-participants').textContent = totalP;
+
+  var list = document.getElementById('upcoming-list');
+  if (!meetings.length) {
+    list.innerHTML = '<div style="color:var(--text3);font-size:.85rem;padding:2rem;text-align:center">No meetings yet. <a href="#" onclick="showPage(\'schedule\')" style="color:var(--accent)">Schedule one →</a></div>';
+    return;
+  }
+  var sorted = meetings.slice().sort(function(a,b){ return new Date(a.start)-new Date(b.start); });
+  list.innerHTML = sorted.map(function(m) {
+    var d = new Date(m.start);
+    var isPast = d < now;
+    var dateStr = d.toLocaleDateString('en-IN',{weekday:'short',month:'short',day:'numeric'}) + ' at ' + d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+    var badgeClass = isPast ? 'badge-done' : (m.mode==='online'?'badge-online':'badge-offline');
+    var badgeText = isPast ? 'Completed' : (m.mode==='online'?'🌐 Online':'🏢 Offline');
+    return '<div class="meeting-card">' +
+      '<div class="meeting-dot" style="background:'+(isPast?'var(--green)':m.mode==='online'?'var(--accent)':'var(--amber)')+'"></div>' +
+      '<div class="meeting-info">' +
+      '<div class="meeting-title-text">' + m.title + '</div>' +
+      '<div class="meeting-meta"><span>' + dateStr + '</span><span>' + (m.participants||[]).length + ' participants</span>' +
+      (m.meetLink?'<a href="'+m.meetLink+'" target="_blank" style="color:var(--accent3)">Join Meet →</a>':'') +
+      '</div></div>' +
+      '<div class="meeting-actions-row">' +
+      '<span class="meeting-badge '+badgeClass+'">' + badgeText + '</span>' +
+      '<button class="btn btn-sm" onclick="startRoomForMeeting(\''+m.id+'\')">🎙 Start</button>' +
+      '<button class="btn btn-sm" onclick="editMeeting(\''+m.id+'\');event.stopPropagation()">✏️</button>' +
+      '<button class="btn btn-sm btn-red" onclick="deleteMeeting(\''+m.id+'\');event.stopPropagation()">🗑</button>' +
+      '</div></div>';
+  }).join('');
+}
+
+// ── PARTICIPANTS INPUT ─────────────────────────────────────
+function setupParticipantInput() {
+  var input = document.getElementById('ptag-input');
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      var val = input.value.trim().replace(/,$/,'');
+      if (val && val.includes('@')) addParticipant(val);
+      else if (val) notify('Please enter a valid email','error');
+      input.value = '';
+    }
+    if (e.key === 'Backspace' && !input.value && participants.length) {
+      removeParticipant(participants[participants.length-1]);
+    }
+  });
+}
+
+function addParticipant(email) {
+  if (participants.indexOf(email) !== -1) return;
+  participants.push(email);
+  renderParticipants();
+}
+
+function removeParticipant(email) {
+  participants = participants.filter(function(p){ return p !== email; });
+  renderParticipants();
+}
+
+function renderParticipants() {
+  var wrap = document.getElementById('ptags');
+  var input = document.getElementById('ptag-input');
+  wrap.innerHTML = '';
+  participants.forEach(function(p) {
+    var tag = document.createElement('span');
+    tag.className = 'ptag';
+    tag.innerHTML = p + '<button onclick="removeParticipant(\''+p+'\')">×</button>';
+    wrap.appendChild(tag);
+  });
+  wrap.appendChild(input);
+}
+
+// ── MEETING MODE ──────────────────────────────────────────
+function setMode(mode) {
+  meetingMode = mode;
+  document.getElementById('mode-online').classList.toggle('active', mode==='online');
+  document.getElementById('mode-offline').classList.toggle('active', mode==='offline');
+  document.getElementById('location-field').style.display = mode==='offline'?'flex':'none';
+}
+
+// ── REMINDERS ─────────────────────────────────────────────
+function setupReminderChips() {
+  document.querySelectorAll('.reminder-chip').forEach(function(c) {
+    if (c.classList.contains('active')) activeReminders.push(c.dataset.min);
+  });
+}
+function toggleReminder(el) {
+  el.classList.toggle('active');
+  var min = el.dataset.min;
+  var idx = activeReminders.indexOf(min);
+  if (idx === -1) activeReminders.push(min);
+  else activeReminders.splice(idx,1);
+}
+
+// ── SCHEDULE MEETING ──────────────────────────────────────
+async function scheduleMeeting() {
+  if (!gToken) { notify('Please login first','error'); return; }
+  var title = document.getElementById('s-title').value.trim();
+  var start = document.getElementById('s-start-date').value;
+  var end = document.getElementById('s-end-date').value;
+  var agenda = document.getElementById('s-agenda').value.trim();
+  var location = document.getElementById('s-location').value.trim();
+
+  if (!title) { notify('Please enter a meeting title','error'); return; }
+  if (!start || !end) { notify('Please set start and end times','error'); return; }
+  if (!participants.length) { notify('Please add at least one participant','error'); return; }
+
+  var btn = document.querySelector('.schedule-form .btn-primary');
+  btn.disabled = true; btn.textContent = '⏳ Scheduling...';
+
+  var attendees = participants.map(function(p){ return {email:p}; });
+  if (gUser && gUser.email) attendees.push({email:gUser.email,self:true});
+
+  var eventBody = {
+    summary: title,
+    description: agenda || '',
+    start: { dateTime: new Date(start).toISOString(), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
+    end: { dateTime: new Date(end).toISOString(), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
+    attendees: attendees,
+    reminders: {
+      useDefault: false,
+      overrides: activeReminders.map(function(m){ return {method:'email',minutes:parseInt(m)}; })
+    }
+  };
+
+  if (meetingMode === 'online') {
+    eventBody.conferenceData = { createRequest: { requestId: 'meet-'+Date.now(), conferenceSolutionKey: { type:'hangoutsMeet' } } };
+  } else if (location) {
+    eventBody.location = location;
+  }
+
+  try {
+    // Build Google Calendar URL (no API needed!)
+    var startISO = new Date(document.getElementById('s-start-date').value).toISOString().replace(/-|:|\.\d{3}/g,'');
+    var endISO = new Date(document.getElementById('s-end-date').value).toISOString().replace(/-|:|\.\d{3}/g,'');
+    var gcalUrl = 'https://calendar.google.com/calendar/render?action=TEMPLATE' +
+      '&text=' + encodeURIComponent(title) +
+      '&dates=' + startISO + '/' + endISO +
+      '&details=' + encodeURIComponent((agenda||'') + (meetingMode==='online'?'\n\nThis is an online meeting.':'')) +
+      '&location=' + encodeURIComponent(meetingMode==='online'?'Google Meet':location) +
+      '&add=' + participants.join(',') +
+      (meetingMode==='online'?'&crm=AVAILABLE':'');
+    window.open(gcalUrl, '_blank');
+
+    // Generate a Meet link placeholder
+    var meetLink = meetingMode==='online' ? 'https://meet.google.com/new' : null;
+    var event = { id: 'local-'+Date.now() };
+
+    var meeting = {
+      id: event.id || ('local-'+Date.now()),
+      title: title,
+      start: start,
+      end: end,
+      participants: participants.slice(),
+      mode: meetingMode,
+      agenda: agenda,
+      location: location,
+      meetLink: meetLink,
+      calEventId: event.id,
+      hasMoM: false,
+      created: new Date().toISOString()
+    };
+    meetings.push(meeting);
+    localStorage.setItem('meetings', JSON.stringify(meetings));
+
+    // Send custom invite emails
+    await sendInviteEmails(meeting);
+
+    // Show result
+    var res = document.getElementById('schedule-result');
+    res.innerHTML = '<div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);border-radius:var(--rsm);padding:14px 16px;margin-top:4px">' +
+      '<div style="color:var(--green);font-weight:600;margin-bottom:8px">✅ Meeting scheduled successfully!</div>' +
+      (meetLink ? '<div class="meet-link-wrap"><span class="meet-link-icon">🎥</span><span class="meet-link-text">'+meetLink+'</span><button class="btn btn-sm" onclick="navigator.clipboard.writeText(\''+meetLink+'\')">Copy</button><a href="'+meetLink+'" target="_blank" class="btn btn-sm btn-primary">Join</a></div>' : '') +
+      '<div style="font-size:.78rem;color:var(--text2);margin-top:8px">📧 Invite emails sent to '+participants.length+' participant(s)</div>' +
+      '</div>';
+
+    notify('Meeting scheduled! Invites sent.','success');
+    trackMeetingScheduled(meeting);
+    clearScheduleForm();
+    updateDashboard();
+
+  } catch(e) {
+    notify('Error: '+e.message,'error');
+    document.getElementById('schedule-result').innerHTML = '<div style="color:var(--red);font-size:.82rem;padding:8px">Error: '+e.message+'</div>';
+  }
+  btn.disabled = false; btn.textContent = '📅 Schedule & Send Invites';
+}
+
+// ── SEND INVITE EMAILS ─────────────────────────────────────
+async function sendInviteEmails(meeting) {
+  var d = new Date(meeting.start);
+  var dateStr = d.toLocaleDateString('en-IN',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  var timeStr = d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+
+  // Open mailto for all participants at once
+  var subject = 'Meeting Invite: ' + meeting.title;
+  var body = 'Hello,\n\nYou are invited to the following meeting:\n\n' +
+    'Title    : ' + meeting.title + '\n' +
+    'Date     : ' + dateStr + '\n' +
+    'Time     : ' + timeStr + '\n' +
+    (meeting.mode==='online' ? 'Platform : Google Meet\n' + (meeting.meetLink?'Join Link: '+meeting.meetLink+'\n':'') : 'Location : '+(meeting.location||'In-Person')+'\n') +
+    (meeting.agenda ? '\nAgenda:\n' + meeting.agenda + '\n' : '') +
+    '\nPlease confirm your attendance.\n\nBest regards,\n' + (gUser?gUser.name:'Meeting Assistant');
+  var mailto = 'mailto:' + meeting.participants.join(',') + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+  window.open(mailto, '_blank');
+}
+
+async function sendGmail(to, subject, body) {
+  // Use mailto: since Gmail API requires app verification
+  var mailto = 'mailto:' + to + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+  window.open(mailto, '_blank');
+}
+
+function clearScheduleForm() {
+  document.getElementById('s-title').value = '';
+  document.getElementById('s-agenda').value = '';
+  document.getElementById('s-location').value = '';
+  document.getElementById('s-start-date').value = '';
+  document.getElementById('s-end-date').value = '';
+  participants = [];
+  renderParticipants();
+  document.getElementById('schedule-result').innerHTML = '';
+}
+
+// ── MEETING ROOM ──────────────────────────────────────────
+function openSelectMeetingModal() {
+  var sel = document.getElementById('sel-meeting');
+  sel.innerHTML = '<option value="new">— Start new ad-hoc meeting —</option>';
+  var now = new Date();
+  meetings.filter(function(m){ return new Date(m.start) > now - 3600000; }).forEach(function(m) {
+    var opt = document.createElement('option');
+    opt.value = m.id; opt.textContent = m.title + ' — ' + new Date(m.start).toLocaleDateString('en-IN');
+    sel.appendChild(opt);
+  });
+  document.getElementById('sel-speaker').value = gUser ? (gUser.given_name||gUser.name||'Me') : 'Me';
+  document.getElementById('select-meeting-modal').classList.add('open');
+}
+
+function enterRoom() {
+  var selId = document.getElementById('sel-meeting').value;
+  mySpeakerName = document.getElementById('sel-speaker').value.trim() || 'Me';
+  closeModal('select-meeting-modal');
+
+  if (selId === 'new') {
+    currentMeeting = null;
+    document.getElementById('room-title').textContent = 'Ad-hoc Meeting';
+    document.getElementById('room-date').textContent = new Date().toLocaleDateString('en-IN',{weekday:'long',month:'long',day:'numeric'});
+    document.getElementById('room-participants-label').textContent = '';
+    document.getElementById('room-mode-label').textContent = 'Offline Mode';
+    setupPTT('offline');
+  } else {
+    currentMeeting = meetings.find(function(m){ return m.id===selId; });
+    if (currentMeeting) {
+      document.getElementById('room-title').textContent = currentMeeting.title;
+      document.getElementById('room-date').textContent = new Date(currentMeeting.start).toLocaleString('en-IN',{weekday:'short',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+      document.getElementById('room-participants-label').textContent = currentMeeting.participants.length + ' participants';
+      document.getElementById('room-mode-label').textContent = currentMeeting.mode === 'online' ? '🌐 Online' : '🏢 Offline';
+      setupPTT(currentMeeting.mode);
+    }
+  }
+  resetRoom();
+}
+
+function setupPTT(mode) {
+  var pttSec = document.getElementById('ptt-section');
+  var pttHint = document.getElementById('ptt-hint');
+  pttSec.style.display = 'flex';
+  if (mode === 'offline') {
+    pttHint.textContent = '💡 Offline: Hold while YOU speak to tag your voice. Or just record freely — all audio is captured.';
+  } else {
+    pttHint.textContent = '💡 Online: Hold while YOU speak on Google Meet to tag your voice. All audio is recorded regardless.';
+  }
+}
+
+function startRoomForMeeting(id) {
+  showPage('room');
+  setTimeout(function() {
+    document.getElementById('sel-meeting').value = id;
+    enterRoom();
+  }, 100);
+}
+
+function resetRoom() {
+  audioChunks = []; audioBlob = null; transcriptSegs = []; momData = null; momPlain = '';
+  secs = 0; document.getElementById('room-timer').textContent = '00:00';
+  document.getElementById('transcript-body').innerHTML = '<div class="empty-state"><div class="ei">🎤</div><div>Press Start Recording then hold<br><strong>Push-to-Talk</strong> while speaking</div></div>';
+  document.getElementById('mom-body').innerHTML = '<div class="empty-state"><div class="ei">📋</div><div>MoM will appear here<br><span style="font-size:.7rem">Record → Transcribe → Generate MoM</span></div></div>';
+  ['rec-stop-btn','transcribe-btn','mom-btn','pdf-btn','word-btn','email-mom-btn','copy-btn'].forEach(function(id){ var el=document.getElementById(id); if(el) el.disabled=true; });
+  setRoomStatus('','Ready to record');
+  document.getElementById('progress-wrap').classList.remove('show');
+}
+
+// ── RECORDING ─────────────────────────────────────────────
+async function startRecording() {
+  try {
+    var stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation:true, noiseSuppression:true, sampleRate:16000, channelCount:1 } });
+    streamRef = stream;
+
+    audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    var source = audioCtx.createMediaStreamSource(stream);
+    analyser = audioCtx.createAnalyser(); analyser.fftSize = 256;
+    source.connect(analyser);
+
+    var mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm';
+    audioChunks = [];
+    mediaRecorder = new MediaRecorder(stream, { mimeType:mimeType, audioBitsPerSecond:128000 });
+
+    // KEY: Only collect data when PTT is active
+    mediaRecorder.ondataavailable = function(e) { if (e.data.size>0) audioChunks.push(e.data); };
+    mediaRecorder.onstop = function() {
+      stream.getTracks().forEach(function(t){ t.stop(); });
+      cancelAnimationFrame(animFrame);
+      document.getElementById('wave-wrap').classList.remove('show');
+      audioBlob = audioChunks.length ? new Blob(audioChunks, {type:mimeType}) : null;
+      if (audioBlob && audioBlob.size > 1000) {
+        setRoomStatus('done','✓ Recording stopped — ' + formatSize(audioBlob.size) + ' captured. Click ⚡ Transcribe');
+        document.getElementById('transcribe-btn').disabled = false;
+      } else {
+        setRoomStatus('','Recording stopped — Audio too short. Please record for at least 5 seconds.');
+      }
+      document.getElementById('rec-start-btn').disabled = false;
+    };
+
+    mediaRecorder.start(500);
+    isRecording = true;
+    document.getElementById('rec-start-btn').disabled = true;
+    document.getElementById('rec-stop-btn').disabled = false;
+    document.getElementById('wave-wrap').classList.add('show');
+    drawWave();
+
+    secs = 0; clearInterval(timerInt);
+    timerInt = setInterval(function() {
+      secs++;
+      document.getElementById('room-timer').textContent = pad(Math.floor(secs/60))+':'+pad(secs%60);
+    }, 1000);
+
+    setRoomStatus('rec','🔴 Recording all audio... Hold Push-to-Talk when YOU speak to tag your voice. Click Stop when done.');
+    notify('Recording started! Use Push-to-Talk to capture speech.','info');
+
+  } catch(e) {
+    notify('Mic error: ' + (e.name==='NotAllowedError'?'Please allow microphone access':e.message),'error');
+  }
+}
+
+function stopRecording() {
+  isRecording = false; isPTT = false;
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+  clearInterval(timerInt);
+  document.getElementById('rec-stop-btn').disabled = true;
+  document.getElementById('ptt-btn').classList.remove('speaking');
+}
+
+// ── PUSH TO TALK ──────────────────────────────────────────
+function pttStart() {
+  if (!isRecording) { notify('Start Recording first!','error'); return; }
+  isPTT = true;
+  document.getElementById('ptt-btn').classList.add('speaking');
+  document.getElementById('ptt-hint').textContent = '🔴 Your voice is being tagged...';
+  // Add a speaker marker in transcript
+  var marker = document.createElement('div');
+  marker.style.cssText = 'font-size:.68rem;color:var(--accent);padding:3px 0;font-family:JetBrains Mono,monospace';
+  marker.textContent = '[' + mySpeakerName + ' speaking at ' + document.getElementById('room-timer').textContent + ']';
+  var tb = document.getElementById('transcript-body');
+  var empty = tb.querySelector('.empty-state');
+  if(empty) empty.style.display='none';
+  tb.appendChild(marker);
+  tb.scrollTop = 99999;
+}
+
+function pttStop() {
+  isPTT = false;
+  document.getElementById('ptt-btn').classList.remove('speaking');
+  document.getElementById('ptt-hint').textContent = 'Release — voice captured. Hold again to speak more.';
+  setTimeout(function() {
+    if (!isPTT) document.getElementById('ptt-hint').textContent = 'Hold the button while speaking';
+  }, 2000);
+}
+
+function drawWave() {
+  var canvas = document.getElementById('wavecanvas');
+  if (!canvas || !analyser) return;
+  var ctx = canvas.getContext('2d');
+  var buf = analyser.frequencyBinCount;
+  var data = new Uint8Array(buf);
+  canvas.width = canvas.offsetWidth * (window.devicePixelRatio||1);
+  canvas.height = canvas.offsetHeight * (window.devicePixelRatio||1);
+  ctx.scale(window.devicePixelRatio||1, window.devicePixelRatio||1);
+  var W = canvas.offsetWidth, H = canvas.offsetHeight;
+  function draw() {
+    animFrame = requestAnimationFrame(draw);
+    analyser.getByteTimeDomainData(data);
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle = '#ede9fe'; ctx.fillRect(0,0,W,H);
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = isPTT ? '#059669' : '#7c3aed';
+    ctx.beginPath();
+    var sw = W/buf, x = 0;
+    for (var i=0; i<buf; i++) {
+      var v=data[i]/128, y=v*H/2;
+      if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); x+=sw;
+    }
+    ctx.lineTo(W,H/2); ctx.stroke();
+  }
+  draw();
+}
+
+function setRoomStatus(type, text) {
+  var dot = document.getElementById('status-dot');
+  dot.className = 'status-dot' + (type?' '+type:'');
+  document.getElementById('status-text').textContent = text;
+}
+
+function showProgress(pct) {
+  var w = document.getElementById('progress-wrap');
+  w.classList.add('show');
+  document.getElementById('progress-fill').style.width = pct+'%';
+}
+
+// ── TRANSCRIBE ────────────────────────────────────────────
+async function transcribeAudio() {
+  if (!audioBlob || !geminiKey) { notify(!geminiKey?'Please enter Gemini API key':'No audio recorded','error'); return; }
+  document.getElementById('transcribe-btn').disabled = true;
+  setRoomStatus('proc','Sending audio to Gemini AI for transcription...');
+  showProgress(20);
+
+  var lang = document.getElementById('room-lang').value;
+  var langNote = lang==='hi-IN'?'Hindi':lang==='mr-IN'?'Marathi':'English (Indian accent)';
+  var speakerNote = mySpeakerName ? 'The main speaker is '+mySpeakerName+'.' : '';
+
+  var prompt = 'You are a transcription AI. Language: '+langNote+'. '+speakerNote+
+    ' Transcribe this meeting audio accurately. Label speakers.' +
+    ' Return ONLY valid JSON with no markdown: {"transcript":[{"speaker":"'+mySpeakerName+'","time":"00:00","text":"..."}],"detected_language":"English"}';
+
+  try {
+    showProgress(40);
+    var b64 = await blobToBase64(audioBlob);
+    showProgress(60);
+
+    var resp = await fetch(GEMINI_URL+geminiKey, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        contents:[{parts:[{text:prompt},{inline_data:{mime_type:audioBlob.type.split(';')[0],data:b64}}]}],
+        generationConfig:{temperature:0.1,maxOutputTokens:8192}
+      })
+    });
+
+    showProgress(85);
+    if (!resp.ok) { var e=await resp.json(); throw new Error(e.error?e.error.message:'API error '+resp.status); }
+    var data = await resp.json();
+    var txt = data.candidates&&data.candidates[0]&&data.candidates[0].content&&data.candidates[0].content.parts&&data.candidates[0].content.parts[0]?data.candidates[0].content.parts[0].text:'';
+    txt = txt.replace(/```json/g,'').replace(/```/g,'').trim();
+
+    var parsed = safeJSON(txt);
+    if (!parsed) throw new Error('Could not parse response. Please try again.');
+
+    transcriptSegs = parsed.transcript||[];
+    renderTranscript(transcriptSegs);
+    showProgress(100);
+    setRoomStatus('done','Transcription complete — '+transcriptSegs.length+' segments. Click ✦ Generate MoM');
+    document.getElementById('mom-btn').disabled = false;
+    notify('Transcription complete!','success');
+
+  } catch(e) {
+    setRoomStatus('','Error: '+e.message);
+    notify('Transcription failed: '+e.message,'error');
+    document.getElementById('transcribe-btn').disabled = false;
+    document.getElementById('progress-wrap').classList.remove('show');
+  }
+}
+
+function renderTranscript(segs) {
+  if (!segs||!segs.length) {
+    document.getElementById('transcript-body').innerHTML='<div class="empty-state"><div class="ei">🔇</div>No speech detected</div>';
+    return;
+  }
+  var spkMap={},ci=0;
+  segs.forEach(function(s){ if(spkMap[s.speaker]===undefined) spkMap[s.speaker]=ci++%SPK.length; });
+  document.getElementById('transcript-body').innerHTML = segs.map(function(seg) {
+    var i=spkMap[seg.speaker],c=SPK[i];
+    return '<div class="seg c'+i+'"><div class="seg-head"><span class="seg-spk" style="background:'+c.bg+';border:1px solid '+c.b+';color:'+c.t+'">'+seg.speaker+'</span><span class="seg-time">'+(seg.time||'')+'</span></div><div class="seg-txt">'+seg.text+'</div></div>';
+  }).join('');
+}
+
+// ── GENERATE MOM ──────────────────────────────────────────
+async function generateMoM() {
+  if (!transcriptSegs.length||!geminiKey) return;
+  var title = currentMeeting?currentMeeting.title:'Meeting';
+  var date = currentMeeting?new Date(currentMeeting.start).toLocaleDateString('en-IN'):new Date().toLocaleDateString('en-IN');
+  var spkNames=[]; transcriptSegs.forEach(function(s){if(spkNames.indexOf(s.speaker)===-1)spkNames.push(s.speaker);});
+  var attendees = currentMeeting?(currentMeeting.participants.join(', ')||spkNames.join(', ')):spkNames.join(', ');
+
+  document.getElementById('mom-btn').disabled=true;
+  document.getElementById('mom-body').innerHTML='<div class="generating"><div class="dots"><span></span><span></span><span></span></div>Generating Minutes of Meeting...</div>';
+
+  var txText = transcriptSegs.map(function(s){ return '['+s.speaker+'] ('+(s.time||'')+'): '+s.text; }).join('\n');
+  var prompt = 'Generate professional Minutes of Meeting. Meeting: '+title+' | Date: '+date+' | Attendees: '+attendees+
+    '. Return ONLY valid JSON: {"meeting_title":"'+title+'","date":"'+date+'","attendees":"'+attendees+
+    '","meeting_summary":"overview","key_discussion_points":["p1"],"decisions_made":["d1"],"action_items":[{"task":"t","owner":"o","deadline":"TBD"}],"next_steps":["s1"],"next_meeting":"TBD"}'+
+    ' TRANSCRIPT:\n'+txText;
+
+  try {
+    var resp = await fetch(GEMINI_URL+geminiKey,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.2,maxOutputTokens:8192}})});
+    if(!resp.ok){var e=await resp.json();throw new Error(e.error?e.error.message:'Error '+resp.status);}
+    var data=await resp.json();
+    var txt=(data.candidates&&data.candidates[0]&&data.candidates[0].content&&data.candidates[0].content.parts&&data.candidates[0].content.parts[0])?data.candidates[0].content.parts[0].text:'';
+    txt=txt.replace(/```json/g,'').replace(/```/g,'').trim();
+    momData=safeJSON(txt);
+    if(!momData) throw new Error('Could not parse response');
+    renderMoM(momData);
+    ['pdf-btn','word-btn','email-mom-btn','copy-btn'].forEach(function(id){var el=document.getElementById(id);if(el)el.disabled=false;});
+    if(currentMeeting){currentMeeting.hasMoM=true;localStorage.setItem('meetings',JSON.stringify(meetings));}
+    notify('MoM generated!','success');
+    trackMoMGenerated();
+  } catch(e) {
+    document.getElementById('mom-body').innerHTML='<div style="color:var(--red);font-size:.82rem;padding:1rem">Error: '+e.message+'</div>';
+    notify('MoM failed: '+e.message,'error');
+  }
+  document.getElementById('mom-btn').disabled=false;
+}
+
+function renderMoM(m) {
+  var h='<div class="meta-grid"><div class="meta-item"><label>Title</label><span>'+(m.meeting_title||'—')+'</span></div><div class="meta-item"><label>Date</label><span>'+(m.date||'—')+'</span></div><div class="meta-item"><label>Attendees</label><span>'+(m.attendees||'—')+'</span></div><div class="meta-item"><label>Next Meeting</label><span>'+(m.next_meeting||'TBD')+'</span></div></div>';
+  if(m.meeting_summary) h+='<div class="mom-sec"><div class="mom-sec-title">Summary</div><div class="mom-summary">'+m.meeting_summary+'</div></div>';
+  if(m.key_discussion_points&&m.key_discussion_points.length) h+='<div class="mom-sec"><div class="mom-sec-title">Key Discussion Points</div><ul class="mom-list">'+m.key_discussion_points.map(function(p){return'<li>'+p+'</li>';}).join('')+'</ul></div>';
+  if(m.decisions_made&&m.decisions_made.length) h+='<div class="mom-sec"><div class="mom-sec-title">Decisions Made</div><ul class="mom-list">'+m.decisions_made.map(function(d){return'<li>'+d+'</li>';}).join('')+'</ul></div>';
+  if(m.action_items&&m.action_items.length){h+='<div class="mom-sec"><div class="mom-sec-title">Action Items</div>';m.action_items.forEach(function(a){h+='<div class="action-row"><div class="a-dot"></div><div class="a-text">'+a.task+'<div><span class="abadge abp">👤 '+(a.owner||'TBD')+'</span><span class="abadge aba">📅 '+(a.deadline||'TBD')+'</span></div></div></div>';});h+='</div>';}
+  if(m.next_steps&&m.next_steps.length) h+='<div class="mom-sec"><div class="mom-sec-title">Next Steps</div><ul class="mom-list">'+m.next_steps.map(function(s){return'<li>'+s+'</li>';}).join('')+'</ul></div>';
+  document.getElementById('mom-body').innerHTML=h;
+  momPlain=['MINUTES OF MEETING','==================','Title    : '+(m.meeting_title||''),'Date     : '+(m.date||''),'Attendees: '+(m.attendees||''),'','SUMMARY',m.meeting_summary||'','','KEY DISCUSSION POINTS'].concat((m.key_discussion_points||[]).map(function(p){return'  • '+p;})).concat(['','DECISIONS MADE']).concat((m.decisions_made||[]).map(function(d){return'  • '+d;})).concat(['','ACTION ITEMS']).concat((m.action_items||[]).map(function(a){return'  • '+a.task+' [Owner: '+(a.owner||'TBD')+', Deadline: '+(a.deadline||'TBD')+']';})).concat(['','NEXT STEPS']).concat((m.next_steps||[]).map(function(s){return'  • '+s;})).concat(['','NEXT MEETING: '+(m.next_meeting||'TBD')]).join('\n');
+}
+
+// ── EXPORT ────────────────────────────────────────────────
+function exportPDF(){
+  if(!momData)return;
+  var jsPDF=window.jspdf.jsPDF,doc=new jsPDF(),m=momData,y=20;
+  var chk=function(n){if(y+n>280){doc.addPage();y=20;}};
+  doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(30,30,30);
+  doc.text('MINUTES OF MEETING',105,y,{align:'center'});y+=11;
+  doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(80,80,80);
+  doc.text((m.meeting_title||'')+'  |  '+(m.date||'')+'  |  '+(m.attendees||''),105,y,{align:'center'});y+=9;
+  doc.setDrawColor(220,220,220);doc.line(20,y,190,y);y+=8;
+  function sec(t,items){if(!items||!items.length)return;chk(16);doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(45,107,247);doc.text(t,20,y);y+=7;doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(40,40,40);items.forEach(function(i){var ls=doc.splitTextToSize('  \u2022 '+i,165);chk(ls.length*5+3);doc.text(ls,20,y);y+=ls.length*5+2;});y+=4;}
+  chk(20);doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(45,107,247);doc.text('SUMMARY',20,y);y+=7;
+  doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(40,40,40);
+  var sl=doc.splitTextToSize(m.meeting_summary||'',165);chk(sl.length*5+6);doc.text(sl,20,y);y+=sl.length*5+8;
+  sec('KEY DISCUSSION POINTS',m.key_discussion_points);sec('DECISIONS MADE',m.decisions_made);
+  if(m.action_items&&m.action_items.length){chk(16);doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(45,107,247);doc.text('ACTION ITEMS',20,y);y+=7;doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(40,40,40);m.action_items.forEach(function(a){var ls=doc.splitTextToSize('  \u2022 '+a.task+'  [Owner: '+(a.owner||'TBD')+' | Deadline: '+(a.deadline||'TBD')+']',165);chk(ls.length*5+3);doc.text(ls,20,y);y+=ls.length*5+2;});y+=4;}
+  sec('NEXT STEPS',m.next_steps);chk(10);doc.setFont('helvetica','bold');doc.setTextColor(40,40,40);
+  doc.text('NEXT MEETING: '+(m.next_meeting||'TBD'),20,y);
+  doc.save('MoM_'+(m.meeting_title||'Meeting').replace(/[^a-z0-9]/gi,'_')+'.pdf');
+}
+
+function exportWord(){
+  if(!momData)return;var m=momData;
+  var html='<html><head><meta charset="utf-8"><style>body{font-family:Calibri,sans-serif;font-size:11pt;margin:2.5cm 2cm}h1{font-size:18pt;color:#1a1a2e;text-align:center}h2{font-size:12pt;color:#2d6be4;margin-top:14pt}.meta{text-align:center;color:#555;font-size:10pt;border-bottom:1px solid #ddd;padding-bottom:10pt;margin-bottom:14pt}.summary{background:#f5f8ff;border-left:4px solid #2d6be4;padding:8pt 12pt;margin:6pt 0 10pt}ul{margin:0 0 10pt 18pt}li{margin-bottom:4pt}.ai{background:#eef3fd;color:#2d6be4;padding:1pt 6pt;font-size:9pt}.ai2{background:#fefce8;color:#92400e;padding:1pt 6pt;font-size:9pt}.action{margin:5pt 0}.footer{margin-top:20pt;border-top:1px solid #ddd;color:#888;font-size:9pt;text-align:center;padding-top:8pt}</style></head><body><h1>Minutes of Meeting</h1><div class="meta"><b>'+(m.meeting_title||'')+'</b> | '+(m.date||'')+' | '+(m.attendees||'')+'</div><h2>Summary</h2><div class="summary">'+(m.meeting_summary||'')+'</div><h2>Key Discussion Points</h2><ul>'+(m.key_discussion_points||[]).map(function(p){return'<li>'+p+'</li>';}).join('')+'</ul><h2>Decisions Made</h2><ul>'+(m.decisions_made||[]).map(function(d){return'<li>'+d+'</li>';}).join('')+'</ul><h2>Action Items</h2>'+(m.action_items||[]).map(function(a){return'<div class="action">&bull; '+a.task+' <span class="ai">&#128100; '+(a.owner||'TBD')+'</span> <span class="ai2">&#128197; '+(a.deadline||'TBD')+'</span></div>';}).join('')+'<h2>Next Steps</h2><ul>'+(m.next_steps||[]).map(function(s){return'<li>'+s+'</li>';}).join('')+'</ul><div class="footer">Next Meeting: <b>'+(m.next_meeting||'TBD')+'</b></div></body></html>';
+  var blob=new Blob(['\ufeff'+html],{type:'application/msword'});
+  var url=URL.createObjectURL(blob);var a=document.createElement('a');
+  a.href=url;a.download='MoM_'+(m.meeting_title||'Meeting').replace(/[^a-z0-9]/gi,'_')+'.doc';a.click();URL.revokeObjectURL(url);
+}
+
+function copyMoM(){
+  if(!momPlain)return;
+  navigator.clipboard.writeText(momPlain).then(function(){
+    var b=document.getElementById('copy-btn');b.textContent='✓ Copied!';setTimeout(function(){b.textContent='⎘ Copy';},2000);
+  });
+}
+
+function openEmailMoM(){
+  var title=currentMeeting?currentMeeting.title:'Meeting';
+  var date=currentMeeting?new Date(currentMeeting.start).toLocaleDateString('en-IN'):new Date().toLocaleDateString('en-IN');
+  document.getElementById('em-sub').value='Minutes of Meeting — '+title+' ('+date+')';
+  document.getElementById('em-to').value=currentMeeting?(currentMeeting.participants.join(', ')):'';
+  document.getElementById('email-mom-modal').classList.add('open');
+}
+
+async function sendMoMEmail(){
+  var to=document.getElementById('em-to').value.trim();
+  var sub=document.getElementById('em-sub').value;
+  var msg=document.getElementById('em-msg').value;
+  var body=(msg?msg+'\n\n':'')+momPlain;
+  if(!to){notify('Please enter recipient email','error');return;}
+  var mailto='mailto:'+to+'?subject='+encodeURIComponent(sub)+'&body='+encodeURIComponent(body);
+  window.open(mailto,'_blank');
+  notify('Mail app opened with MoM!','success');
+  closeModal('email-mom-modal');
+}
+
+// ── HELPERS ───────────────────────────────────────────────
+function toggleProfile() {
+  var dd = document.getElementById('profile-dropdown');
+  dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+}
+document.addEventListener('click', function(e) {
+  var dd = document.getElementById('profile-dropdown');
+  if (dd && !e.target.closest('[onclick="toggleProfile()"]') && !dd.contains(e.target)) dd.style.display = 'none';
+});
+
+function deleteMeeting(id) {
+  if (!confirm('Delete this meeting?')) return;
+  meetings = meetings.filter(function(m){ return m.id !== id; });
+  localStorage.setItem('meetings', JSON.stringify(meetings));
+  updateDashboard();
+  notify('Meeting deleted','info');
+}
+
+function editMeeting(id) {
+  var m = meetings.find(function(x){ return x.id===id; });
+  if (!m) return;
+  showPage('schedule');
+  setTimeout(function(){
+    document.getElementById('s-title').value = m.title || '';
+    var ms = m.start ? m.start.replace(' ','T').slice(0,16) : '';
+    var me = m.end ? m.end.replace(' ','T').slice(0,16) : '';
+    if(ms) document.getElementById('s-start-date').value = ms;
+    if(me) document.getElementById('s-end-date').value = me;
+    document.getElementById('s-agenda').value = m.agenda || '';
+    document.getElementById('s-location').value = m.location || '';
+    participants = (m.participants || []).slice();
+    renderParticipants();
+    setMode(m.mode || 'online');
+    // Remove old entry so re-scheduling replaces it
+    meetings = meetings.filter(function(x){ return x.id !== id; });
+    localStorage.setItem('meetings', JSON.stringify(meetings));
+    notify('Edit the details and click Schedule to save changes','info');
+  }, 200);
+}
+
+// ── VIDEO CALL ────────────────────────────────────────────
+var jitsiApi = null;
+var vcCapturing = false;
+var vcChatInterval = null;
+
+function setQuickTime(mins) {
+  var now = new Date();
+  var start = new Date(now.getTime() + 5*60000); // 5 min from now
+  var end = new Date(start.getTime() + mins*60000);
+  document.getElementById('s-start-date').value = toLocalInput(start);
+  document.getElementById('s-end-date').value = toLocalInput(end);
+}
+
+function setQuickTimeTomorrow(startHr, endHr) {
+  var tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  var start = new Date(tomorrow);
+  start.setHours(startHr, 0, 0, 0);
+  var end = new Date(tomorrow);
+  end.setHours(endHr, 0, 0, 0);
+  document.getElementById('s-start-date').value = toLocalInput(start);
+  document.getElementById('s-end-date').value = toLocalInput(end);
+}
+
+function toggleVcChat() {
+  var body = document.getElementById('vc-chat-body');
+  var btn = document.getElementById('vc-chat-toggle');
+  if (!body || !btn) return;
+  if (body.style.display === 'none') {
+    body.style.display = 'flex';
+    btn.textContent = 'Hide';
+  } else {
+    body.style.display = 'none';
+    btn.textContent = 'Show';
+  }
+}
+
+function generateRoomId() {
+  var words = ['Team','Meet','Sync','Call','Review','Daily','Sprint','Collab'];
+  var room = words[Math.floor(Math.random()*words.length)] + Math.floor(Math.random()*9000+1000);
+  document.getElementById('vc-room').value = room;
+  showRoomLink(room);
+}
+
+function showRoomLink(room) {
+  var link = 'https://meet.jit.si/' + room;
+  document.getElementById('vc-link').textContent = link;
+  document.getElementById('vc-link-wrap').style.display = 'block';
+  document.getElementById('vc-copy-btn').style.display = 'inline-flex';
+  var waText = encodeURIComponent('Join my meeting: ' + link);
+  var waBtn = document.getElementById('wa-share-btn');
+  var tgBtn = document.getElementById('tg-share-btn');
+  if(waBtn) waBtn.href = 'https://wa.me/?text=' + waText;
+  if(tgBtn) tgBtn.href = 'https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent('Join my meeting!');
+}
+
+function copyRoomLink() {
+  var room = document.getElementById('vc-room').value.trim();
+  if (!room) return;
+  var link = 'https://meet.jit.si/' + room;
+  navigator.clipboard.writeText(link).then(function() {
+    notify('Room link copied! Share with participants.','success');
+  });
+}
+
+function startVideoCall() {
+  var name = document.getElementById('vc-name').value.trim() || (gUser ? gUser.name : 'Guest');
+  var room = document.getElementById('vc-room').value.trim();
+  if (!room) { notify('Please enter a room name or generate one','error'); return; }
+  room = room.replace(/\s+/g,'-');
+  document.getElementById('vc-room').value = room;
+  showRoomLink(room);
+
+  // Build Jitsi URL with display name pre-filled
+  var jitsiUrl = 'https://meet.jit.si/' + encodeURIComponent(room) + '#userInfo.displayName="' + encodeURIComponent(name) + '"';
+  
+  // Show active meeting card
+  document.getElementById('jitsi-container').style.display = 'block';
+  document.getElementById('vc-room-label').textContent = '🎥 ' + room + ' — Active';
+  document.getElementById('jitsi-frame').innerHTML = 
+    '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:16px;padding:2rem;background:#f5f0ff">' +
+    '<div style="font-size:3rem">🎥</div>' +
+    '<div style="font-size:1.1rem;font-weight:700;color:#1e1b4b">Meeting: ' + room + '</div>' +
+    '<div style="font-size:.85rem;color:#6d28d9;margin-bottom:8px">Share the link below with participants</div>' +
+    '<div style="background:#fff;border:1px solid #ddd6fe;border-radius:10px;padding:10px 16px;font-family:monospace;font-size:.8rem;color:#7c3aed;word-break:break-all;max-width:400px;text-align:center">https://meet.jit.si/' + room + '</div>' +
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:8px">' +
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:8px">' +
+    '<button class="btn btn-primary" onclick="openMeetingTab()" style="font-size:.9rem;padding:10px 24px">\U0001f680 Join Meeting (opens in new tab)</button>' +
+    '<button class="btn" onclick="copyMeetLink()">\U0001f517 Copy Invite Link</button>' +
+    '<div style="font-size:.75rem;color:#a78bfa;margin-top:4px">No time limits · No downloads · Works in any browser</div>' +
+    '<div style="margin-top:16px;background:#fff;border:1px solid #ddd6fe;border-radius:10px;padding:14px 20px;max-width:400px;text-align:center">' +
+    '<div style="font-size:.8rem;font-weight:600;color:#1e1b4b;margin-bottom:8px">📋 Want MoM for this meeting?</div>' +
+    '<div style="font-size:.75rem;color:#6d28d9;margin-bottom:10px">Start MoM capture BEFORE joining the meeting</div>' +
+    '<button class="btn btn-primary" id="mom-capture-btn" onclick="toggleMoMCapture()" style="width:100%">🎙 Start MoM Capture</button>' +
+    '</div>' +
+    '</div>';
+  document.getElementById('jitsi-container').scrollIntoView({behavior:'smooth'});
+  notify('Room ready! Click Join Meeting to open in a new tab.','success');
+}
+
+function endVideoCall() {
+  if (jitsiApi) { try { jitsiApi.dispose(); } catch(e){} jitsiApi = null; }
+  document.getElementById('jitsi-container').style.display = 'none';
+  document.getElementById('jitsi-frame').innerHTML = '';
+  if (vcCapturing) {
+    vcCapturing = false;
+    stopRecording();
+    notify('Meeting ended. Go to MoM Room tab to transcribe and generate MoM!','info');
+  } else {
+    notify('Meeting ended.','info');
+  }
+}
+
+function toggleMoMCapture() {
+  var btn = document.getElementById('mom-capture-btn');
+  vcCapturing = !vcCapturing;
+  if (vcCapturing) {
+    if(btn) { btn.textContent = '⏹ Stop MoM Capture'; btn.style.background = '#dc2626'; btn.style.borderColor = '#dc2626'; btn.style.color = '#fff'; }
+    mySpeakerName = gUser ? (gUser.given_name || gUser.name || 'Me') : 'Me';
+    currentMeeting = null;
+    resetRoom();
+    setTimeout(function() {
+      startRecording();
+      notify('🎙 MoM capture started! Join your meeting in the new tab. Come back here after the call to generate MoM.','success');
+    }, 500);
+  } else {
+    if(btn) { btn.textContent = '🎙 Start MoM Capture'; btn.style.background = ''; btn.style.borderColor = ''; btn.style.color = ''; }
+    stopRecording();
+    notify('MoM capture stopped. Go to MoM Room tab → Transcribe → Generate MoM!','info');
+  }
+}
+
+function updateVcMeetingsList() {
+  var inner = document.getElementById('vc-meetings-inner');
+  if (!inner) return;
+  var now = new Date();
+  var upcoming = meetings.filter(function(m){ return new Date(m.start) > now - 3600000; });
+  if (!upcoming.length) {
+    inner.innerHTML = '<div style="color:var(--text3);font-size:.82rem">No upcoming meetings scheduled.</div>';
+    return;
+  }
+  inner.innerHTML = upcoming.map(function(m) {
+    var room = m.title.replace(/\s+/g,'-') + '-' + m.id.slice(-4);
+    var d = new Date(m.start);
+    var dateStr = d.toLocaleDateString('en-IN',{month:'short',day:'numeric'}) + ' ' + d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+    return '<div class="vc-meeting-row">' +
+      '<div style="flex:1"><div style="font-size:.875rem;font-weight:600">'+m.title+'</div><div style="font-size:.72rem;color:var(--text2)">'+dateStr+' · '+m.participants.length+' participants</div></div>' +
+      '<button class="btn btn-sm btn-primary" onclick="quickJoin(\"'+room+'\")" >Join Now</button>' +
+      '<button class="btn btn-sm" onclick="copyQuickLink(\"'+room+'\")" >🔗 Copy Link</button>' +
+      '</div>';
+  }).join('');
+}
+
+function quickJoin(room) {
+  document.getElementById('vc-room').value = room;
+  startVideoCall();
+}
+
+function copyQuickLink(room) {
+  navigator.clipboard.writeText('https://meet.jit.si/' + room).then(function() {
+    notify('Invite link copied!','success');
+  });
+}
+
+
+function openMeetingTab() {
+  var room = document.getElementById('vc-room').value.trim();
+  window.open('https://meet.jit.si/' + encodeURIComponent(room), '_blank');
+}
+function copyMeetLink() {
+  var room = document.getElementById('vc-room').value.trim();
+  navigator.clipboard.writeText('https://meet.jit.si/' + room).then(function(){ notify('Link copied!','success'); });
+}
+
+// ── JSONBIN HELPERS ────────────────────────────────────────
+var allUsersData = [];
+var allMeetingsData = [];
+var blockedUsers = [];
+var USERS_BIN = localStorage.getItem('users_bin_id') || null;
+var GLOBAL_BIN = localStorage.getItem('global_bin_id') || null;
+
+async function jsonbinGet(binId) {
+  var r = await fetch(JSONBIN_URL + '/' + binId + '/latest', {
+    headers: { 'X-Master-Key': JSONBIN_KEY }
+  });
+  var d = await r.json();
+  return d.record || {};
+}
+
+async function jsonbinCreate(data, name) {
+  var r = await fetch(JSONBIN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_KEY, 'X-Bin-Name': name, 'X-Bin-Private': 'true' },
+    body: JSON.stringify(data)
+  });
+  var d = await r.json();
+  return d.metadata ? d.metadata.id : null;
+}
+
+async function jsonbinUpdate(binId, data) {
+  await fetch(JSONBIN_URL + '/' + binId, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_KEY },
+    body: JSON.stringify(data)
+  });
+}
+
+// ── TRACK USER LOGIN ────────────────────────────────────────
+async function trackUserLogin(user) {
+  try {
+    var binId = SHARED_BIN_ID;
+    GLOBAL_BIN = binId;
+    var globalData = { users: [], meetings: [], moms: [], blocked: [] };
+    try {
+      globalData = await jsonbinGet(binId);
+    } catch(e) {}
+    if (!globalData.users) globalData.users = [];
+    if (!globalData.meetings) globalData.meetings = [];
+    if (!globalData.moms) globalData.moms = [];
+    if (!globalData.blocked) globalData.blocked = [];
+
+    // Check if blocked
+    blockedUsers = globalData.blocked || [];
+    if (blockedUsers.includes(user.email)) {
+      notify('Your access has been blocked by the administrator.', 'error');
+      signOut();
+      return;
+    }
+
+    // Update user record
+    var now = new Date().toISOString();
+    var existing = globalData.users.findIndex(function(u) { return u.email === user.email; });
+    var userRecord = {
+      name: user.name, email: user.email, picture: user.picture || '',
+      firstLogin: existing >= 0 ? globalData.users[existing].firstLogin : now,
+      lastLogin: now, loginCount: existing >= 0 ? (globalData.users[existing].loginCount || 0) + 1 : 1,
+      meetings: existing >= 0 ? (globalData.users[existing].meetings || 0) : 0,
+      moms: existing >= 0 ? (globalData.users[existing].moms || 0) : 0,
+      blocked: false
+    };
+
+    if (existing >= 0) globalData.users[existing] = userRecord;
+    else globalData.users.push(userRecord);
+
+    // Show admin tab only for admin
+    if (user.email === ADMIN_EMAIL) {
+      document.getElementById('admin-tab').style.display = 'inline-flex';
+    }
+
+    await jsonbinUpdate(binId, globalData);
+    allUsersData = globalData.users;
+    allMeetingsData = globalData.meetings || [];
+  } catch(e) { console.log('Tracking error:', e); }
+}
+
+async function trackMoMGenerated() {
+  try {
+    if (!GLOBAL_BIN) return;
+    var globalData = await jsonbinGet(GLOBAL_BIN);
+    if (!globalData.users) return;
+    var idx = globalData.users.findIndex(function(u) { return u.email === gUser.email; });
+    if (idx >= 0) globalData.users[idx].moms = (globalData.users[idx].moms || 0) + 1;
+    if (!globalData.moms) globalData.moms = [];
+    globalData.moms.push({
+      user: gUser.name, email: gUser.email,
+      title: momData ? momData.meeting_title : 'Meeting',
+      date: momData ? momData.date : new Date().toLocaleDateString('en-IN'),
+      summary: momData ? (momData.meeting_summary || '').slice(0, 100) : '',
+      generatedAt: new Date().toISOString()
+    });
+    await jsonbinUpdate(GLOBAL_BIN, globalData);
+  } catch(e) {}
+}
+
+async function trackMeetingScheduled(meeting) {
+  try {
+    if (!GLOBAL_BIN) return;
+    var globalData = await jsonbinGet(GLOBAL_BIN);
+    if (!globalData.meetings) globalData.meetings = [];
+    var idx = (globalData.users||[]).findIndex(function(u){ return u.email === gUser.email; });
+    if(idx>=0) globalData.users[idx].meetings = (globalData.users[idx].meetings||0)+1;
+    globalData.meetings.push({
+      title: meeting.title, scheduledBy: gUser.name, email: gUser.email,
+      date: meeting.start, participants: meeting.participants.length,
+      mode: meeting.mode, scheduledAt: new Date().toISOString()
+    });
+    await jsonbinUpdate(GLOBAL_BIN, globalData);
+  } catch(e) {}
+}
+
+// ── ADMIN PANEL FUNCTIONS ──────────────────────────────────
+function verifyAdmin() {
+  var pwd = document.getElementById('admin-pwd-input').value;
+  if (pwd === ADMIN_PASSWORD) {
+    document.getElementById('admin-gate').style.display = 'none';
+    document.getElementById('admin-panel').style.display = 'block';
+    loadAdminPanel();
+  } else {
+    document.getElementById('admin-pwd-err').style.display = 'block';
+    setTimeout(function(){ document.getElementById('admin-pwd-err').style.display='none'; }, 3000);
+  }
+}
+
+async function loadAdminPanel() {
+  if (document.getElementById('admin-panel').style.display === 'none') return;
+  GLOBAL_BIN = SHARED_BIN_ID;
+  try {
+    var globalData = await jsonbinGet(GLOBAL_BIN);
+    allUsersData = globalData.users || [];
+    allMeetingsData = globalData.meetings || [];
+    blockedUsers = globalData.blocked || [];
+    var allMoms = globalData.moms || [];
+    var today = new Date().toDateString();
+    var activeToday = allUsersData.filter(function(u){ return u.lastLogin && new Date(u.lastLogin).toDateString()===today; }).length;
+
+    document.getElementById('a-total-users').textContent = allUsersData.length;
+    document.getElementById('a-active-today').textContent = activeToday;
+    document.getElementById('a-total-meetings').textContent = allMeetingsData.length;
+    document.getElementById('a-total-moms').textContent = allMoms.length;
+    document.getElementById('a-blocked').textContent = blockedUsers.length;
+
+    renderUsersTable(allUsersData);
+    renderMeetingsTable(allMeetingsData);
+    renderMomsTable(allMoms);
+  } catch(e) { notify('Error loading admin data: '+e.message,'error'); }
+}
+
+async function refreshAdminData() { await loadAdminPanel(); notify('Data refreshed!','success'); }
+
+function showAdminTab(tab) {
+  ['users','meetings','moms'].forEach(function(t) {
+    document.getElementById('atab-'+t+'-content').style.display = t===tab?'block':'none';
+    var btn = document.getElementById('atab-'+t);
+    if(btn) { btn.style.background = t===tab?'linear-gradient(135deg,#7c3aed,#6d28d9)':'transparent'; btn.style.color = t===tab?'#fff':'var(--text2)'; btn.style.borderColor = t===tab?'#7c3aed':'transparent'; }
+  });
+}
+
+function renderUsersTable(users) {
+  if (!users.length) { document.getElementById('users-table').innerHTML='<div style="padding:2rem;text-align:center;color:var(--text3)">No users yet</div>'; return; }
+  var html = '<table style="width:100%;border-collapse:collapse;font-size:.8rem">' +
+    '<thead><tr style="background:#faf5ff;border-bottom:1px solid var(--border)">' +
+    '<th style="padding:10px 14px;text-align:left;font-weight:600;color:var(--text2)">User</th>' +
+    '<th style="padding:10px 14px;text-align:left;font-weight:600;color:var(--text2)">Email</th>' +
+    '<th style="padding:10px 14px;text-align:center;font-weight:600;color:var(--text2)">Logins</th>' +
+    '<th style="padding:10px 14px;text-align:center;font-weight:600;color:var(--text2)">Meetings</th>' +
+    '<th style="padding:10px 14px;text-align:center;font-weight:600;color:var(--text2)">MoMs</th>' +
+    '<th style="padding:10px 14px;text-align:left;font-weight:600;color:var(--text2)">Last Login</th>' +
+    '<th style="padding:10px 14px;text-align:center;font-weight:600;color:var(--text2)">Actions</th>' +
+    '</tr></thead><tbody>';
+  users.forEach(function(u) {
+    var isBlocked = blockedUsers.includes(u.email);
+    var isAdmin = u.email === ADMIN_EMAIL;
+    var lastLogin = u.lastLogin ? new Date(u.lastLogin).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : 'Never';
+    html += '<tr style="border-bottom:1px solid var(--border);' + (isBlocked?'opacity:.5':'') + '">' +
+      '<td style="padding:10px 14px"><div style="display:flex;align-items:center;gap:8px">' +
+      (u.picture?'<img src="'+u.picture+'" style="width:28px;height:28px;border-radius:50%">':'<div style="width:28px;height:28px;border-radius:50%;background:#ede9fe;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:600;color:#7c3aed">'+u.name.charAt(0)+'</div>') +
+      '<div><div style="font-weight:500">'+u.name+'</div>' + (isAdmin?'<div style="font-size:.65rem;color:#d97706;font-weight:600">ADMIN</div>':'') + '</div></div></td>' +
+      '<td style="padding:10px 14px;color:var(--text2)">'+u.email+'</td>' +
+      '<td style="padding:10px 14px;text-align:center">'+( u.loginCount||1)+'</td>' +
+      '<td style="padding:10px 14px;text-align:center">'+(u.meetings||0)+'</td>' +
+      '<td style="padding:10px 14px;text-align:center">'+(u.moms||0)+'</td>' +
+      '<td style="padding:10px 14px;color:var(--text2);font-size:.75rem">'+lastLogin+'</td>' +
+      '<td style="padding:10px 14px;text-align:center">';
+    if (!isAdmin) {
+      html += isBlocked
+        ? '<button class="btn btn-sm btn-green" onclick="adminAction(this,false)" data-email="'+u.email+'">Unblock</button>'
+        : '<button class="btn btn-sm btn-red" onclick="adminAction(this,true)" data-email="'+u.email+'">🚫 Block</button>';
+    } else {
+      html += '<span style="font-size:.72rem;color:var(--text3)">—</span>';
+    }
+    html += '</td></tr>';
+  });
+  html += '</tbody></table>';
+  document.getElementById('users-table').innerHTML = html;
+}
+
+function filterUsers() {
+  var q = document.getElementById('user-search').value.toLowerCase();
+  var filtered = allUsersData.filter(function(u){ return u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q); });
+  renderUsersTable(filtered);
+}
+
+function renderMeetingsTable(meetings) {
+  if (!meetings.length) { document.getElementById('meetings-table').innerHTML='<div style="padding:2rem;text-align:center;color:var(--text3)">No meetings scheduled yet</div>'; return; }
+  var html = '<table style="width:100%;border-collapse:collapse;font-size:.8rem">' +
+    '<thead><tr style="background:#faf5ff;border-bottom:1px solid var(--border)">' +
+    '<th style="padding:10px 14px;text-align:left;font-weight:600;color:var(--text2)">Meeting</th>' +
+    '<th style="padding:10px 14px;text-align:left;font-weight:600;color:var(--text2)">Scheduled By</th>' +
+    '<th style="padding:10px 14px;text-align:left;font-weight:600;color:var(--text2)">Date</th>' +
+    '<th style="padding:10px 14px;text-align:center;font-weight:600;color:var(--text2)">Participants</th>' +
+    '<th style="padding:10px 14px;text-align:center;font-weight:600;color:var(--text2)">Mode</th>' +
+    '</tr></thead><tbody>';
+  meetings.forEach(function(m) {
+    var d = m.date ? new Date(m.date).toLocaleString('en-IN',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+    html += '<tr style="border-bottom:1px solid var(--border)">' +
+      '<td style="padding:10px 14px;font-weight:500">'+m.title+'</td>' +
+      '<td style="padding:10px 14px;color:var(--text2)">'+m.scheduledBy+'</td>' +
+      '<td style="padding:10px 14px;color:var(--text2);font-size:.75rem">'+d+'</td>' +
+      '<td style="padding:10px 14px;text-align:center">'+m.participants+'</td>' +
+      '<td style="padding:10px 14px;text-align:center"><span class="meeting-badge '+(m.mode==='online'?'badge-online':'badge-offline')+'">'+(m.mode==='online'?'🌐 Online':'🏢 Offline')+'</span></td>' +
+      '</tr>';
+  });
+  html += '</tbody></table>';
+  document.getElementById('meetings-table').innerHTML = html;
+}
+
+function renderMomsTable(moms) {
+  if (!moms.length) { document.getElementById('moms-table').innerHTML='<div style="padding:2rem;text-align:center;color:var(--text3)">No MoMs generated yet</div>'; return; }
+  var html = '<table style="width:100%;border-collapse:collapse;font-size:.8rem">' +
+    '<thead><tr style="background:#faf5ff;border-bottom:1px solid var(--border)">' +
+    '<th style="padding:10px 14px;text-align:left;font-weight:600;color:var(--text2)">Meeting</th>' +
+    '<th style="padding:10px 14px;text-align:left;font-weight:600;color:var(--text2)">Generated By</th>' +
+    '<th style="padding:10px 14px;text-align:left;font-weight:600;color:var(--text2)">Date</th>' +
+    '<th style="padding:10px 14px;text-align:left;font-weight:600;color:var(--text2)">Summary</th>' +
+    '</tr></thead><tbody>';
+  moms.forEach(function(m) {
+    var d = m.generatedAt ? new Date(m.generatedAt).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+    html += '<tr style="border-bottom:1px solid var(--border)">' +
+      '<td style="padding:10px 14px;font-weight:500">'+m.title+'</td>' +
+      '<td style="padding:10px 14px;color:var(--text2)">'+m.user+'</td>' +
+      '<td style="padding:10px 14px;color:var(--text2);font-size:.75rem">'+d+'</td>' +
+      '<td style="padding:10px 14px;color:var(--text3);font-size:.75rem">'+m.summary+'...</td>' +
+      '</tr>';
+  });
+  html += '</tbody></table>';
+  document.getElementById('moms-table').innerHTML = html;
+}
+
+function adminAction(btn, block) {
+  var email = btn.getAttribute('data-email');
+  toggleBlockUser(email, block);
+}
+
+async function toggleBlockUser(email, block) {
+  if (!confirm((block?'Block ':'Unblock ')+email+'?')) return;
+  try {
+    var globalData = await jsonbinGet(GLOBAL_BIN);
+    if (!globalData.blocked) globalData.blocked = [];
+    if (block) { if (!globalData.blocked.includes(email)) globalData.blocked.push(email); }
+    else globalData.blocked = globalData.blocked.filter(function(e){ return e!==email; });
+    var idx = (globalData.users||[]).findIndex(function(u){ return u.email===email; });
+    if (idx>=0) globalData.users[idx].blocked = block;
+    await jsonbinUpdate(GLOBAL_BIN, globalData);
+    blockedUsers = globalData.blocked;
+    notify((block?'User blocked: ':'User unblocked: ')+email, block?'error':'success');
+    await loadAdminPanel();
+  } catch(e) { notify('Error: '+e.message,'error'); }
+}
+
+function sendAnnouncement() {
+  var msg = prompt('Enter announcement message to show all users:');
+  if (!msg) return;
+  localStorage.setItem('admin_announcement', msg);
+  notify('Announcement saved! Users will see it on next login.','success');
+}
+
+function exportAdminData() {
+  var rows = [['Name','Email','Logins','Meetings','MoMs','Last Login','Blocked']];
+  allUsersData.forEach(function(u) {
+    rows.push([u.name, u.email, u.loginCount||1, u.meetings||0, u.moms||0, u.lastLogin?new Date(u.lastLogin).toLocaleString('en-IN'):'Never', blockedUsers.includes(u.email)?'Yes':'No']);
+  });
+  var csv = rows.map(function(r){ return r.join(','); }).join('\n');
+  var blob = new Blob([csv], {type:'text/csv'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a'); a.href=url; a.download='MeetingAssistant_Users.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+
+// ── ABLY REAL-TIME CHAT ────────────────────────────────────
+var currentChannel = 'general';
+var chatRefreshInterval = null;
+var channelMessages = {};
+var onlineUsers = {};
+
+function initAbly() {
+  if (!gUser || ablyClient) return;
+  try {
+    ablyClient = new Ably.Realtime({ key: ABLY_KEY, clientId: gUser.email });
+    ablyClient.connection.on('connected', function() {
+      subscribeToChannel('general');
+      subscribeToPresence();
+      subscribeToRequests();
+    });
+  } catch(e) { console.log('Ably init error:', e); }
+}
+
+function subscribeToChannel(ch) {
+  if (!ablyClient) return;
+  if (ablyChannel) { try { ablyChannel.unsubscribe(); } catch(e){} }
+  ablyChannel = ablyClient.channels.get('chat-' + ch);
+  if (!channelMessages[ch]) channelMessages[ch] = [];
+
+  // Load history first
+  ablyChannel.history({ limit: 50 }, function(err, result) {
+    if (!err && result) {
+      var msgs = result.items.reverse().map(function(m) { return m.data; });
+      channelMessages[ch] = msgs;
+      renderChatMessages();
+    }
+  });
+
+  ablyChannel.subscribe(function(msg) {
+    if (!channelMessages[ch]) channelMessages[ch] = [];
+    channelMessages[ch].push(msg.data);
+    if (channelMessages[ch].length > 100) channelMessages[ch] = channelMessages[ch].slice(-100);
+    if (currentChannel === ch) renderChatMessages();
+    var countEl = document.getElementById('chat-msg-count');
+    if(countEl) countEl.textContent = channelMessages[ch].length + ' messages';
+  });
+}
+
+function subscribeToPresence() {
+  if (!ablyClient) return;
+  var presenceChannel = ablyClient.channels.get('presence');
+  presenceChannel.presence.enter({ name: gUser.name, email: gUser.email, picture: gUser.picture || '' });
+  presenceChannel.presence.subscribe(function() {
+    presenceChannel.presence.get(function(err, members) {
+      if (!err) {
+        onlineUsers = {};
+        members.forEach(function(m) { if(m.data) onlineUsers[m.data.email] = m.data; });
+        updatePeopleList();
+        var cnt = document.getElementById('chat-online-count');
+        if(cnt) cnt.textContent = members.length;
+      }
+    });
+  });
+  // Get initial presence
+  presenceChannel.presence.get(function(err, members) {
+    if (!err) {
+      onlineUsers = {};
+      members.forEach(function(m) { if(m.data) onlineUsers[m.data.email] = m.data; });
+      updatePeopleList();
+      var cnt = document.getElementById('chat-online-count');
+      if(cnt) cnt.textContent = members.length;
+    }
+  });
+}
+
+function subscribeToRequests() {
+  if (!ablyClient || !gUser) return;
+  var reqChannel = ablyClient.channels.get('requests-' + gUser.email.replace(/[@.]/g,'-'));
+  reqChannel.subscribe('chat-request', function(msg) {
+    var req = msg.data;
+    pendingRequests[req.from] = req;
+    showChatRequest(req);
+  });
+  reqChannel.subscribe('request-accepted', function(msg) {
+    var data = msg.data;
+    notify(data.name + ' accepted your chat request!', 'success');
+    openDM(data.email, data.name, data.picture);
+  });
+}
+
+function updatePeopleList() {
+  var list = document.getElementById('chat-people-list');
+  if (!list) return;
+  var people = Object.values(onlineUsers).filter(function(u) { return u.email !== gUser.email; });
+  if (!people.length) { list.innerHTML = '<div style="color:var(--text3);font-size:.75rem;padding:6px">No one else online</div>'; return; }
+  var html = "";
+  people.forEach(function(u) {
+    var pic = u.picture ? '<img src="'+u.picture+'" style="width:26px;height:26px;border-radius:50%;flex-shrink:0">' : '<div style="width:26px;height:26px;border-radius:50%;background:#ede9fe;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:600;color:#7c3aed">'+(u.name||'?').charAt(0)+'</div>';
+    var ename = encodeURIComponent(u.name||'');
+    var epic = encodeURIComponent(u.picture||'');
+    html += '<div style="display:flex;align-items:center;gap:7px;padding:5px 6px;border-radius:6px;cursor:pointer;border:1px solid transparent" onclick="sendChatRequest(\"'+u.email+'\",\"'+ename+'\",\"'+epic+'\")">'+ pic +'<div style="flex:1;min-width:0"><div style="font-size:.78rem;font-weight:500">'+u.name+'</div><div style="font-size:.65rem;color:#059669">● online</div></div><span style="font-size:.65rem;color:#7c3aed">DM</span></div>';
+  });
+  list.innerHTML = html;
+}
+
+
+function sendChatRequest(email, name, picture) {
+  if (!ablyClient || !gUser) return;
+  var decodedName = decodeURIComponent(name);
+  var decodedPic = decodeURIComponent(picture);
+  var reqChannel = ablyClient.channels.get('requests-' + email.replace(/[@.]/g,'-'));
+  reqChannel.publish('chat-request', { from: gUser.email, name: gUser.name, picture: gUser.picture||'' });
+  notify('Chat request sent to ' + decodedName + '!', 'info');
+}
+
+function showChatRequest(req) {
+  var panel = document.getElementById('chat-requests-panel');
+  var list = document.getElementById('chat-requests-list');
+  if (!panel || !list) return;
+  panel.style.display = 'block';
+  var div = document.createElement('div');
+  div.style.cssText = 'padding:6px 8px;border-radius:6px;background:#faf5ff;margin-bottom:4px;border:1px solid #ddd6fe';
+  div.setAttribute('data-from', req.from);
+  div.setAttribute('data-name', req.name||'');
+  div.setAttribute('data-pic', req.picture||'');
+  div.innerHTML = '<div style="font-size:.75rem;font-weight:500;margin-bottom:6px">' + (req.name||'Someone') + ' wants to chat 💬</div>' +
+    '<div style="display:flex;gap:4px">' +
+    '<button class="btn btn-sm btn-green" style="flex:1;justify-content:center;padding:4px" onclick="handleChatReq(this,true)">✓ Accept</button>' +
+    '<button class="btn btn-sm btn-red" style="flex:1;justify-content:center;padding:4px" onclick="handleChatReq(this,false)">✕ Decline</button>' +
+    '</div>';
+  list.appendChild(div);
+}
+
+function handleChatReq(btn, accept) {
+  var div = btn.closest('[data-from]');
+  if (!div) return;
+  var email = div.getAttribute('data-from');
+  var name = div.getAttribute('data-name');
+  var pic = div.getAttribute('data-pic');
+  div.remove();
+  var reqsLeft = document.getElementById('chat-requests-list');
+  if(reqsLeft && !reqsLeft.children.length) document.getElementById('chat-requests-panel').style.display = 'none';
+  if (accept) {
+    var reqChannel = ablyClient.channels.get('requests-' + email.replace(/[@.]/g,'-'));
+    reqChannel.publish('request-accepted', { email: gUser.email, name: gUser.name, picture: gUser.picture||'' });
+    openDM(email, name, pic);
+    notify('Chat request accepted!', 'success');
+  }
+}
+
+
+function openDM(email, name, picture) {
+  currentDmUser = { email: email, name: name, picture: picture };
+  var dmKey = [gUser.email, email].sort().join('-').replace(/[@.]/g,'_');
+  currentChannel = 'dm-' + dmKey;
+  if (ablyChannel) { try { ablyChannel.unsubscribe(); } catch(e){} }
+  ablyChannel = ablyClient.channels.get('dm-' + dmKey);
+  channelMessages[currentChannel] = [];
+
+  ablyChannel.history({ limit: 50 }, function(err, result) {
+    if (!err && result) {
+      channelMessages[currentChannel] = result.items.reverse().map(function(m) { return m.data; });
+      renderChatMessages();
+    }
+  });
+
+  ablyChannel.subscribe(function(msg) {
+    if (!channelMessages[currentChannel]) channelMessages[currentChannel] = [];
+    channelMessages[currentChannel].push(msg.data);
+    renderChatMessages();
+  });
+
+  // Update label
+  var lbl = document.getElementById('chat-channel-label');
+  if(lbl) lbl.innerHTML = (picture ? '<img src="'+picture+'" style="width:20px;height:20px;border-radius:50%;margin-right:4px">' : '') + '💬 ' + name;
+
+  // Deselect all channel buttons
+  ['general','meetings','announcements','random'].forEach(function(c) {
+    var btn = document.getElementById('ch-'+c);
+    if(btn) { btn.style.background='transparent'; btn.style.color=''; btn.style.borderColor='transparent'; }
+  });
+  notify('Now chatting with ' + name, 'success');
+}
+
+function loadChat() {
+  clearInterval(chatRefreshInterval);
+  if (!ablyClient && gUser) initAbly();
+  if (ablyClient) subscribeToChannel(currentChannel);
+  renderChatMessages();
+}
+
+function renderChatMessages() {
+  var box = document.getElementById('chat-messages');
+  if (!box) return;
+  var msgs = channelMessages[currentChannel] || [];
+  if (!msgs.length) {
+    box.innerHTML = '<div style="text-align:center;color:var(--text3);font-size:.8rem;padding:2rem">' + (currentChannel.startsWith('dm-') ? 'Start your private conversation! 🔒' : 'No messages yet. Say hello! 👋') + '</div>';
+    return;
+  }
+  var wasAtBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 30;
+  var lastDate = '';
+  box.innerHTML = msgs.map(function(m) {
+    var isMe = gUser && m.email === gUser.email;
+    var time = new Date(m.time).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+    var dateStr = new Date(m.time).toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+    var dateSep = '';
+    if (dateStr !== lastDate) { lastDate = dateStr; dateSep = '<div style="text-align:center;font-size:.68rem;color:var(--text3);margin:8px 0;"><span style="background:#faf5ff;padding:2px 10px;border-radius:20px;border:1px solid var(--border)">' + dateStr + '</span></div>'; }
+    return dateSep + '<div style="display:flex;gap:8px;align-items:flex-end;' + (isMe?'flex-direction:row-reverse':'') + '">' +
+      (m.picture ? '<img src="'+m.picture+'" style="width:28px;height:28px;border-radius:50%;flex-shrink:0">' : '<div style="width:28px;height:28px;border-radius:50%;background:#ede9fe;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:600;color:#7c3aed;flex-shrink:0">'+(m.name||'?').charAt(0)+'</div>') +
+      '<div style="max-width:65%">' +
+      '<div style="font-size:.65rem;color:var(--text3);margin-bottom:2px;' + (isMe?'text-align:right':'') + '">' + (isMe?'You':m.name) + ' · ' + time + '</div>' +
+      '<div style="background:' + (isMe?'linear-gradient(135deg,#7c3aed,#6d28d9)':'#f3f4f6') + ';color:' + (isMe?'#fff':'#1f2937') + ';padding:9px 13px;border-radius:' + (isMe?'16px 4px 16px 16px':'4px 16px 16px 16px') + ';font-size:.875rem;line-height:1.5;word-break:break-word">' + m.text + '</div>' +
+      '</div></div>';
+  }).join('');
+  var cnt = document.getElementById('chat-msg-count');
+  if(cnt) cnt.textContent = msgs.length + ' messages';
+  if(wasAtBottom) box.scrollTop = box.scrollHeight;
+}
+
+function sendChatMsg() {
+  var input = document.getElementById('chat-input');
+  var text = input ? input.value.trim() : '';
+  if (!text || !gUser || !ablyChannel) return;
+  input.value = '';
+  var msg = { name: gUser.name, email: gUser.email, picture: gUser.picture||'', text: text, time: new Date().toISOString() };
+  ablyChannel.publish('message', msg);
+}
+
+function switchChannel(ch) {
+  currentChannel = ch;
+  currentDmUser = null;
+  ['general','meetings','announcements','random'].forEach(function(c) {
+    var btn = document.getElementById('ch-'+c);
+    if(btn) { btn.style.background = c===ch?'linear-gradient(135deg,#7c3aed,#6d28d9)':'transparent'; btn.style.color = c===ch?'#fff':''; btn.style.borderColor = c===ch?'#7c3aed':'transparent'; }
+  });
+  var lbl = document.getElementById('chat-channel-label');
+  if(lbl) lbl.textContent = '# ' + ch;
+  subscribeToChannel(ch);
+}
+
+function fetchChatMessages() {}
+function fetchVcChatMessages() {
+  if (!ablyClient) return;
+  var vcCh = ablyClient.channels.get('chat-meeting');
+  var box = document.getElementById('vc-chat-body');
+  if (!box) return;
+  vcCh.history({ limit: 30 }, function(err, result) {
+    if (!err && result) {
+      var msgs = result.items.reverse().map(function(m){ return m.data; });
+      if (!msgs.length) { box.innerHTML = '<div style="text-align:center;color:var(--text3);font-size:.75rem">No messages yet</div>'; return; }
+      box.innerHTML = msgs.map(function(m) {
+        var isMe = gUser && m.email === gUser.email;
+        var time = new Date(m.time).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+        return '<div style="display:flex;gap:6px;align-items:flex-end;' + (isMe?'flex-direction:row-reverse':'') + '">' +
+          '<div style="width:22px;height:22px;border-radius:50%;background:#ede9fe;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:600;color:#7c3aed;flex-shrink:0">' + (m.name||'?').charAt(0) + '</div>' +
+          '<div><div style="font-size:.62rem;color:var(--text3);margin-bottom:1px;' + (isMe?'text-align:right':'') + '">' + (isMe?'You':m.name) + ' · ' + time + '</div>' +
+          '<div style="background:' + (isMe?'linear-gradient(135deg,#7c3aed,#6d28d9)':'#f3f4f6') + ';color:' + (isMe?'#fff':'#1f2937') + ';padding:6px 10px;border-radius:' + (isMe?'10px 3px 10px 10px':'3px 10px 10px 10px') + ';font-size:.78rem">' + m.text + '</div></div></div>';
+      }).join('');
+      box.scrollTop = box.scrollHeight;
+    }
+  });
+}
+
+function sendVcChat() {
+  var input = document.getElementById('vc-chat-input');
+  var text = input ? input.value.trim() : '';
+  if (!text || !gUser || !ablyClient) return;
+  input.value = '';
+  var vcCh = ablyClient.channels.get('chat-meeting');
+  vcCh.publish('message', { name: gUser.name, email: gUser.email, text: text, time: new Date().toISOString() });
+  setTimeout(fetchVcChatMessages, 200);
+}
+
+function loadVcChat() {
+  if (!ablyClient && gUser) initAbly();
+  fetchVcChatMessages();
+  clearInterval(vcChatInterval);
+  vcChatInterval = setInterval(fetchVcChatMessages, 3000);
+}
+
+function safeJSON(txt){
+  try{return JSON.parse(txt);}catch(e){}
+  var f=txt.replace(/,\s*$/,'');
+  var inS=false,esc=false;
+  for(var i=0;i<f.length;i++){var c=f[i];if(esc){esc=false;continue;}if(c==='\\'){esc=true;continue;}if(c==='"')inS=!inS;}
+  if(inS)f+='"';
+  var st=[];inS=false;esc=false;
+  for(var j=0;j<f.length;j++){var ch=f[j];if(esc){esc=false;continue;}if(ch==='\\'){esc=true;continue;}if(ch==='"'){inS=!inS;continue;}if(inS)continue;if(ch==='{')st.push('}');else if(ch==='[')st.push(']');else if(ch==='}'||ch===']')st.pop();}
+  while(st.length)f+=st.pop();
+  try{return JSON.parse(f);}catch(e2){return null;}
+}
+
+function blobToBase64(blob){
+  return new Promise(function(res,rej){var r=new FileReader();r.onload=function(){res(r.result.split(',')[1]);};r.onerror=rej;r.readAsDataURL(blob);});
+}
+
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+
+function notify(msg,type){
+  var el=document.createElement('div');
+  el.className='notif '+(type||'info');
+  el.textContent=msg;
+  document.body.appendChild(el);
+  setTimeout(function(){el.remove();},3500);
+}
+
+document.querySelectorAll('.modal-overlay').forEach(function(o){
+  o.addEventListener('click',function(e){if(e.target===o)o.classList.remove('open');});
+});
+</script>
+</body>
+</html>
