@@ -506,7 +506,10 @@ canvas.wavecanvas{width:100%;height:32px;border-radius:var(--rxs);background:var
             <button class="btn btn-sm" onclick="showPage('dashboard')">← Back</button>
             <span style="font-size:.85rem;font-weight:600" id="chat-channel-label"># general</span>
           </div>
-          <span style="font-size:.7rem;color:var(--text3)" id="chat-msg-count">0 messages</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:.7rem;color:var(--text3)" id="chat-msg-count">0 messages</span>
+            <button class="btn btn-sm" id="notif-toggle-btn" onclick="toggleDesktopNotifs()" style="font-size:.65rem">🔔 Enable Notifications</button>
+          </div>
         </div>
         <div id="chat-messages" style="flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:8px">
           <div style="text-align:center;color:var(--text3);font-size:.8rem;padding:2rem">Connecting... 💬</div>
@@ -715,11 +718,12 @@ canvas.wavecanvas{width:100%;height:32px;border-radius:var(--rxs);background:var
       </div>
     </div>
 
-    <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap" id="export-row" style="display:none">
+    <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap" id="export-row">
       <button class="btn btn-sm" id="pdf-btn" onclick="exportPDF()" disabled>⬇ PDF</button>
       <button class="btn btn-sm" id="word-btn" onclick="exportWord()" disabled>⬇ Word</button>
       <button class="btn btn-sm" id="email-mom-btn" onclick="openEmailMoM()" disabled>✉ Email MoM</button>
       <button class="btn btn-sm" id="copy-btn" onclick="copyMoM()" disabled>⎘ Copy</button>
+      <button class="btn btn-sm btn-red" onclick="clearAndRecordNew()">🔄 Clear & Record New</button>
     </div>
 
     <div class="room-grid">
@@ -1327,6 +1331,14 @@ function resetRoom() {
   ['rec-stop-btn','transcribe-btn','mom-btn','pdf-btn','word-btn','email-mom-btn','copy-btn'].forEach(function(id){ var el=document.getElementById(id); if(el) el.disabled=true; });
   setRoomStatus('','Ready to record');
   document.getElementById('progress-wrap').classList.remove('show');
+}
+
+function clearAndRecordNew() {
+  if (isRecording) stopRecording();
+  if (streamRef) { try { streamRef.getTracks().forEach(function(t){ t.stop(); }); } catch(e){} streamRef = null; }
+  resetRoom();
+  document.getElementById('rec-start-btn').disabled = false;
+  notify('Cleared! Ready to record a new session.','success');
 }
 
 // ── RECORDING ─────────────────────────────────────────────
@@ -2173,7 +2185,10 @@ function subscribeToChannel(ch) {
     if (channelMessages[ch].length > 100) channelMessages[ch] = channelMessages[ch].slice(-100);
     if (currentChannel === ch) renderChatMessages();
     // Play sound for messages from others
-    if (msg.data && gUser && msg.data.email !== gUser.email) playChatSound();
+    if (msg.data && gUser && msg.data.email !== gUser.email) {
+      playChatSound();
+      sendDesktopNotif(msg.data.name || 'New message', msg.data.text || '', msg.data.picture || '');
+    }
     var countEl = document.getElementById('chat-msg-count');
     if(countEl) countEl.textContent = channelMessages[ch].length + ' messages';
   });
@@ -2213,10 +2228,13 @@ function subscribeToRequests() {
     var req = msg.data;
     pendingRequests[req.from] = req;
     showChatRequest(req);
+    sendDesktopNotif('Chat Request', (req.name || 'Someone') + ' wants to chat with you!', req.picture || '');
+    playChatSound();
   });
   reqChannel.subscribe('request-accepted', function(msg) {
     var data = msg.data;
     notify(data.name + ' accepted your chat request!', 'success');
+    sendDesktopNotif('Request Accepted', data.name + ' accepted your chat request!', data.picture || '');
     openDM(data.email, data.name, data.picture);
   });
 }
@@ -2460,6 +2478,55 @@ function notify(msg,type){
   document.body.appendChild(el);
   var myCount = notifCount;
   setTimeout(function(){el.remove(); notifCount = Math.max(0, notifCount-1);},3500);
+}
+
+// Desktop Notifications
+var desktopNotifsEnabled = false;
+
+function toggleDesktopNotifs() {
+  var btn = document.getElementById('notif-toggle-btn');
+  if (!desktopNotifsEnabled) {
+    if (!('Notification' in window)) {
+      notify('Your browser does not support desktop notifications','error');
+      return;
+    }
+    if (Notification.permission === 'granted') {
+      desktopNotifsEnabled = true;
+      if(btn) { btn.textContent = '🔕 Disable Notifications'; btn.style.background = 'rgba(45,138,86,.1)'; btn.style.color = 'var(--green)'; btn.style.borderColor = 'rgba(45,138,86,.2)'; }
+      notify('Desktop notifications enabled!','success');
+    } else if (Notification.permission !== 'denied') {
+      Notification.requestPermission().then(function(perm) {
+        if (perm === 'granted') {
+          desktopNotifsEnabled = true;
+          if(btn) { btn.textContent = '🔕 Disable Notifications'; btn.style.background = 'rgba(45,138,86,.1)'; btn.style.color = 'var(--green)'; btn.style.borderColor = 'rgba(45,138,86,.2)'; }
+          notify('Desktop notifications enabled!','success');
+        } else {
+          notify('Notification permission denied by browser','error');
+        }
+      });
+    } else {
+      notify('Notifications blocked. Please allow in browser settings.','error');
+    }
+  } else {
+    desktopNotifsEnabled = false;
+    if(btn) { btn.textContent = '🔔 Enable Notifications'; btn.style.background = ''; btn.style.color = ''; btn.style.borderColor = ''; }
+    notify('Desktop notifications disabled','info');
+  }
+}
+
+function sendDesktopNotif(title, body, icon) {
+  if (!desktopNotifsEnabled || Notification.permission !== 'granted') return;
+  try {
+    var n = new Notification(title, {
+      body: body,
+      icon: icon || 'https://gogassunny-lang.github.io/meeting-assistant/favicon.ico',
+      badge: icon || '',
+      tag: 'havelli-chat-' + Date.now(),
+      silent: false
+    });
+    n.onclick = function() { window.focus(); n.close(); };
+    setTimeout(function(){ n.close(); }, 5000);
+  } catch(e) {}
 }
 
 // Chat notification sound
